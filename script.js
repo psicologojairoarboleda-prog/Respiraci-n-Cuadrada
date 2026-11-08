@@ -29,11 +29,7 @@ const audios = {
 const LARGE_PERIMETER = 800;
 const SMALL_PERIMETER = 400;
 
-// =========================================================================
-// MAPA MAESTRO DE TIEMPOS EXACTOS (INTRO vs. ACCIÓN)
-// =========================================================================
-// 'introFin': Segundo exacto en que la voz termina "Iniciamos, primer ciclo..." 
-// y da paso inmediato a la primera línea de acción. Durante este tiempo TODO está quieto.
+// Configuración de tiempos de introducción estricta para cada ciclo
 const AUDIO_CONFIG = {
     4: { introFin: 3.5 }, // Audio4_2.mp3
     5: { introFin: 3.0 }, // Audio5_2.mp3
@@ -41,7 +37,7 @@ const AUDIO_CONFIG = {
     7: { introFin: 3.0 }  // Audio7_2.mp3
 };
 
-// Segundo exacto de Audio9_2.mp3 donde arranca la música con fuerza para evitar el silencio inicial
+// Segundo exacto de Audio9_2.mp3 para iniciar sonando al instante
 const BACKGROUND_START_SECOND = 4.0;
 
 function playAudioDynamic(audioElem) {
@@ -91,7 +87,6 @@ async function startExercise() {
     skipBtn.style.display = 'block';
     isDuringIntro = true;
 
-    // SOLUCIÓN AL SILENCIO INICIAL: Salta directamente al segundo con sonido activo de Audio9_2.mp3
     try {
         bgAudio.currentTime = BACKGROUND_START_SECOND;
         await bgAudio.play();
@@ -164,7 +159,7 @@ function runNextCycle() {
 
     if (!cycleAudio) return;
 
-    // CONGELACIÓN TOTAL durante toda la intro hablada de "Iniciamos, primer ciclo..."
+    // Cuadrados congelados durante la intro hablada
     largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
     smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
     circle.textContent = '--';
@@ -179,7 +174,7 @@ function runNextCycle() {
         let activeDuration = totalDuration - introOffset;
         if (activeDuration < 10) activeDuration = 16; 
 
-        let phaseDuration = activeDuration / 4; // Duración exacta de cada una de las 4 fases
+        let phaseDuration = activeDuration / 4; 
         let startTime = null;
 
         function animateCycle(timestamp) {
@@ -188,7 +183,7 @@ function runNextCycle() {
 
             let elapsed = (timestamp - startTime) / 1000;
 
-            // SI ESTÁ EN LA INTRO ("Iniciamos..."): NADA SE MUEVE
+            // Congelados durante la introducción de cada ciclo
             if (elapsed < introOffset) {
                 largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
                 smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
@@ -197,7 +192,6 @@ function runNextCycle() {
                 return;
             }
 
-            // COMIENZA LA ACCIÓN DE RESPIRACIÓN PASO A PASO
             let activeTime = elapsed - introOffset;
             let currentPhaseIndex = Math.floor(activeTime / phaseDuration);
 
@@ -208,12 +202,12 @@ function runNextCycle() {
             let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
             let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
 
-            // 1. CUADRADO GRANDE: Avanza un lado exacto por fase (Inhala, Sostén, Exhala, Vacío)
+            // Cuadrado Grande: Avanza por fase
             let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
             let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
             largeProgress.style.strokeDashoffset = largeTargetOffset;
 
-            // 2. CUADRADO PEQUEÑO Y NÚMEROS: Se mueven EXCLUSIVAMENTE al ritmo del conteo (1, 2, 3, 4)
+            // Cuadrado Pequeño: Se mueve solo durante el conteo (1, 2, 3, 4)
             let secondDuration = phaseDuration / 4;
             let currentSecond = Math.min(Math.floor(phaseElapsed / secondDuration) + 1, 4);
             circle.textContent = currentSecond;
@@ -222,7 +216,6 @@ function runNextCycle() {
             let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
             smallProgress.style.strokeDashoffset = smallOffset;
 
-            // Textos y colores sincronizados
             if (currentPhaseIndex === 0) {
                 instructionText.textContent = "1. INHALA por la nariz";
                 largeProgress.style.stroke = varColor('--accent-inhale');
