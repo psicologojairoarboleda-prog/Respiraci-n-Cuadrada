@@ -41,7 +41,6 @@
             font-size: 1.4rem;
             font-weight: 500;
             margin-bottom: 6px;
-            letter-spacing: -0.5px;
         }
 
         p.subtitle {
@@ -61,8 +60,6 @@
             align-items: center;
             font-size: 1rem;
             font-weight: 500;
-            color: var(--text-color);
-            transition: all 0.5s ease;
         }
 
         .instructions-box {
@@ -85,16 +82,11 @@
             font-size: 0.95rem;
             border-radius: 30px;
             cursor: pointer;
-            transition: opacity 0.2s ease, transform 0.1s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: opacity 0.2s ease;
         }
 
         button:hover {
             opacity: 0.9;
-        }
-
-        button:active {
-            transform: scale(0.98);
         }
 
         .hidden {
@@ -106,7 +98,7 @@
 
     <div class="container">
         <h1>Respiración Cuadrada</h1>
-        <p class="subtitle">Práctica guiada de relajación</p>
+        <p class="subtitle">Práctica guiada</p>
 
         <div class="instructions-box" id="instructionText">
             Presiona el botón para comenzar la práctica.
@@ -120,9 +112,8 @@
     </div>
 
     <script>
-        // Configuración de rutas de los audios (Ajusta la ruta de la carpeta si es necesario, ej: './Audio1.mp3' o 'audio/Audio1.mp3')
-        // Basado en que están en la misma carpeta del repositorio, se enlazan de manera directa o mediante subcarpeta.
-        const audioFiles = [
+        // LISTA DE AUDIOS: Asegúrate de que los nombres coincidan exactamente en tu repositorio
+        const guideFiles = [
             'Audio1.mp3',
             'Audio2.mp3',
             'Audio3.mp3',
@@ -132,70 +123,54 @@
             'Audio7.mp3',
             'Audio8.mp3'
         ];
-
-        const bgMusicFile = 'Audio9.mp3';
+        const bgFile = 'Audio9.mp3';
 
         let currentIndex = 0;
-        let bgAudio = null;
-        let currentGuideAudio = null;
-        let isRunning = false;
+        const bgAudio = new Audio(bgFile);
+        const guideAudio = new Audio();
 
-        const startButton = document.getElementById('startButton');
-        const instructionText = document.getElementById('instructionText');
-        const statusLabel = document.getElementById('statusLabel');
+        bgAudio.loop = true;
+        bgAudio.volume = 0.35; // Volumen de fondo suave
 
         function initPractice() {
-            if (isRunning) return;
-            isRunning = true;
-
-            startButton.classList.add('hidden');
-            instructionText.innerText = "Iniciando ejercicio...";
-            statusLabel.innerText = "Conectando...";
-
-            // 1. Inicializar y reproducir la música de fondo (Audio 9) desde el segundo 0
-            bgAudio = new Audio(bgMusicFile);
-            bgAudio.loop = true;
-            bgAudio.currentTime = 0;
-            bgAudio.volume = 0.4; // Volumen moderado para que acompañe la voz de guía
+            const btn = document.getElementById('startButton');
+            btn.classList.add('hidden');
             
-            bgAudio.play().then(() => {
-                console.log("Música de fondo (Audio 9) iniciada correctamente.");
-            }).catch(e => {
-                console.warn("Error al reproducir audio 9 (fondo):", e);
-            });
+            document.getElementById('instructionText').innerText = "Iniciando práctica...";
+            
+            // 1. Reproducir música de fondo (Audio 9) desde el segundo 0 exacto
+            bgAudio.currentTime = 0;
+            bgAudio.play().catch(err => console.log("Error en música de fondo:", err));
 
-            // 2. Comenzar la secuencia de los audios guías (1 al 8)
-            playSequenceAudio(0);
+            // 2. Iniciar la secuencia de la guía (1 al 8)
+            playStep(0);
         }
 
-        function playSequenceAudio(index) {
-            if (index >= audioFiles.length) {
-                // Fin de la secuencia completa
-                instructionText.innerText = "Práctica finalizada. Buen trabajo.";
-                statusLabel.innerText = "Completado";
-                
-                // Opcional: Desvanecer o apagar la música de fondo al terminar la práctica
-                if (bgAudio) {
-                    bgAudio.pause();
-                }
+        function playStep(index) {
+            if (index >= guideFiles.length) {
+                document.getElementById('instructionText').innerText = "Práctica finalizada.";
+                document.getElementById('statusLabel').innerText = "Completado";
+                bgAudio.pause();
                 return;
             }
 
             currentIndex = index;
-            currentGuideAudio = new Audio(audioFiles[currentIndex]);
+            guideAudio.src = guideFiles[currentIndex];
+            guideAudio.load();
 
-            currentGuideAudio.play().then(() => {
-                instructionText.innerText = `Reproduciendo guía de respiración...`;
-                statusLabel.innerText = `Paso ${currentIndex + 1} de 8`;
+            document.getElementById('statusLabel').innerText = `Paso ${currentIndex + 1} de 8`;
+
+            guideAudio.play().then(() => {
+                document.getElementById('instructionText').innerText = "Sigue la guía de respiración...";
             }).catch(error => {
-                console.error(`Error al reproducir el archivo ${audioFiles[currentIndex]}:`, error);
-                // Si un archivo falla, salta automáticamente al siguiente para evitar que se quede estático
-                playSequenceAudio(currentIndex + 1);
+                console.error("Error reproduciendo " + guideFiles[currentIndex], error);
+                // Si hay un error con un archivo, salta al siguiente para no bloquear la web
+                playStep(currentIndex + 1);
             });
 
-            // Evento cuando termina el audio actual para pasar fluidamente al siguiente
-            currentGuideAudio.onended = () => {
-                playSequenceAudio(currentIndex + 1);
+            // Al terminar el audio actual, salta al siguiente paso automáticamente
+            guideAudio.onended = () => {
+                playStep(currentIndex + 1);
             };
         }
     </script>
