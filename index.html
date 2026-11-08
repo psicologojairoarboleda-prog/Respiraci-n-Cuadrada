@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Respiración Guiada - Calm</title>
+    <title>Respiración Cuadrática - Box Breathing</title>
     <style>
         :root {
             --bg-color: #f4f0ea;
             --card-bg: #ffffff;
             --primary-color: #8b7bb0;
+            --accent-inhale: #71b280;
+            --accent-hold: #8b7bb0;
+            --accent-exhale: #e08a68;
+            --accent-empty: #5c9ead;
             --text-color: #2c2c2c;
         }
 
@@ -29,7 +33,7 @@
             background-color: var(--card-bg);
             border-radius: 24px;
             padding: 30px;
-            max-width: 400px;
+            max-width: 420px;
             width: 100%;
             text-align: center;
             box-shadow: 0 10px 25px rgba(0,0,0,0.05);
@@ -42,23 +46,55 @@
         }
 
         p.subtitle {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: #666;
             margin-top: 0;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
-        .circle-container {
+        /* Contenedor del Cuadrado Animado */
+        .box-wrapper {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin: 20px auto;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 220px;
-            margin: 20px 0;
         }
 
+        /* SVG para el dibujo del borde cuadrado por fases */
+        .box-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg); /* Inicia desde arriba */
+        }
+
+        .box-bg {
+            fill: none;
+            stroke: #e6e0d8;
+            stroke-width: 8;
+            rx: 16px;
+        }
+
+        .box-progress {
+            fill: none;
+            stroke: var(--primary-color);
+            stroke-width: 8;
+            stroke-linecap: round;
+            rx: 16px;
+            stroke-dasharray: 800; /* Longitud total aproximada del perímetro */
+            stroke-dashoffset: 800;
+            transition: stroke-dashoffset 0.1s linear, stroke 0.4s ease;
+        }
+
+        /* Círculo guía interior */
         .breathing-circle {
-            width: 110px;
-            height: 110px;
+            width: 100px;
+            height: 100px;
             background-color: var(--primary-color);
             border-radius: 50%;
             display: flex;
@@ -67,23 +103,29 @@
             color: white;
             font-weight: bold;
             font-size: 2.2rem;
-            box-shadow: 0 0 20px rgba(139, 123, 176, 0.3);
+            box-shadow: 0 0 20px rgba(0,0,0,0.08);
             transform: scale(1);
-            /* Transición suave de 1 segundo para sincronizar exactamente con cada tic del contador */
             transition: transform 1s linear, background-color 0.5s ease;
+            z-index: 2;
         }
 
         .instruction {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: 600;
             min-height: 30px;
-            margin: 15px 0;
+            margin: 15px 0 5px 0;
         }
 
         .timer-info {
             font-size: 0.9rem;
             color: #777;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
         }
 
         .btn {
@@ -96,41 +138,97 @@
             font-weight: bold;
             cursor: pointer;
             width: 100%;
+            transition: background-color 0.2s ease;
+        }
+
+        .audio-toggle {
+            background: none;
+            border: 1px solid #ccc;
+            color: #555;
+            padding: 8px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>EJERCICIO: 4-7-8</h1>
-        <p class="subtitle">Respira para calmar tu cuerpo y mente</p>
+        <h1>RESPIRACIÓN CUADRÁTICA</h1>
+        <p class="subtitle">4s Inhala · 4s Sostén · 4s Exhala · 4s Vacío</p>
 
-        <div class="circle-container">
+        <div class="box-wrapper">
+            <svg class="box-svg" viewBox="0 0 220 220">
+                <rect class="box-bg" x="10" y="10" width="200" height="200" />
+                <rect class="box-progress" id="boxProgress" x="10" y="10" width="200" height="200" />
+            </svg>
             <div class="breathing-circle" id="circle">--</div>
         </div>
 
         <div class="instruction" id="instructionText">Haz clic en Iniciar</div>
-        <div class="timer-info" id="cycleText">Ciclo: 0 / 3</div>
+        <div class="timer-info" id="cycleText">Ciclo: 0 / 4</div>
 
-        <button class="btn" id="startBtn" onclick="toggleExercise()">Iniciar Respiración</button>
+        <div class="controls">
+            <button class="btn" id="startBtn" onclick="toggleExercise()">Iniciar Respiración</button>
+            <button class="audio-toggle" id="audioBtn" onclick="toggleAudio()">🔊 Sonido: Activado</button>
+        </div>
     </div>
 
     <script>
         let isRunning = false;
         let currentCycle = 0;
-        const maxCycles = 3;
-        let countdownInterval;
+        const maxCycles = 4;
+        const phaseDuration = 4; // 4 segundos exactos por fase (Cuadrática)
+        
+        let timerInterval = null;
+        let audioEnabled = true;
 
         const circle = document.getElementById('circle');
         const instructionText = document.getElementById('instructionText');
         const cycleText = document.getElementById('cycleText');
         const startBtn = document.getElementById('startBtn');
+        const boxProgress = document.getElementById('boxProgress');
+        const audioBtn = document.getElementById('audioBtn');
 
-        // Escalas de tamaño del círculo
-        const MIN_SCALE = 1.0;
-        const MAX_SCALE = 1.8;
+        // Medida del perímetro del cuadrado en el SVG
+        const PERIMETER = 800; 
+
+        // Web Audio API para tonos relajantes sin archivos externos
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playTone(freq, type = 'sine', duration = 0.4) {
+            if (!audioEnabled || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) { console.log(e); }
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            audioBtn.textContent = audioEnabled ? "🔊 Sonido: Activado" : "🔇 Sonido: Silenciado";
+        }
 
         function toggleExercise() {
+            initAudio();
             if (isRunning) {
                 stopExercise();
             } else {
@@ -148,12 +246,13 @@
 
         function stopExercise() {
             isRunning = false;
-            clearInterval(countdownInterval);
-            circle.style.transform = `scale(${MIN_SCALE})`;
+            clearInterval(timerInterval);
+            circle.style.transform = 'scale(1)';
             circle.style.backgroundColor = 'var(--primary-color)';
             circle.textContent = '--';
             instructionText.textContent = 'Haz clic en Iniciar';
-            cycleText.textContent = 'Ciclo: 0 / 3';
+            cycleText.textContent = 'Ciclo: 0 / 4';
+            boxProgress.style.strokeDashoffset = PERIMETER;
             startBtn.textContent = 'Iniciar Respiración';
             startBtn.style.backgroundColor = 'var(--primary-color)';
         }
@@ -163,67 +262,73 @@
 
             currentCycle++;
             if (currentCycle > maxCycles) {
-                instructionText.textContent = '¡Excelente trabajo! Te has relajado.';
+                instructionText.textContent = '¡Sesión completada! Mente en calma.';
+                playTone(523.25, 'sine', 0.8); // Do agudo final
                 stopExercise();
                 return;
             }
 
             cycleText.textContent = `Ciclo: ${currentCycle} / ${maxCycles}`;
 
-            // 1. INHALAR (4s): Crece progresivamente en 4 pasos
-            startPhase('1. INHALA por la nariz...', 4, '#9d8ec2', 'inhale', () => {
-                // 2. SOSTENER (7s): Se queda grande
-                startPhase('2. SOSTÉN el aire...', 7, '#8b7bb0', 'hold', () => {
-                    // 3. EXHALAR (8s): Se encoge progresivamente en 8 pasos
-                    startPhase('3. EXHALA lentamente...', 8, '#bdae8b', 'exhale', () => {
-                        runNextCycle();
+            // Secuencia Cuadrática: Inhalar (4s) -> Sostener (4s) -> Exhalar (4s) -> Sostener Vacío (4s)
+            executePhase('1. INHALA por la nariz', phaseDuration, 'inhale', 'var(--accent-inhale)', 261.63, () => {
+                executePhase('2. SOSTÉN con aire', phaseDuration, 'hold-full', 'var(--accent-hold)', 329.63, () => {
+                    executePhase('3. EXHALA despacio', phaseDuration, 'exhale', 'var(--accent-exhale)', 293.66, () => {
+                        executePhase('4. SOSTÉN en vacío', phaseDuration, 'hold-empty', 'var(--accent-empty)', 220.00, () => {
+                            runNextCycle();
+                        });
                     });
                 });
             });
         }
 
-        function startPhase(text, totalSeconds, color, phaseType, onComplete) {
+        function executePhase(text, seconds, type, color, toneFreq, onComplete) {
             if (!isRunning) return;
 
             instructionText.textContent = text;
             circle.style.backgroundColor = color;
+            boxProgress.style.stroke = color;
+            playTone(toneFreq, 'sine', 0.5);
 
-            let remainingSeconds = totalSeconds;
-            
-            // Función para calcular la escala exacta segundo a segundo
-            const updateVisuals = (currentSecond) => {
-                let elapsed = totalSeconds - currentSecond;
-                let scale = MIN_SCALE;
+            let startTime = Date.now();
+            let totalMs = seconds * 1000;
 
-                if (phaseType === 'inhale') {
-                    // Crece gradualmente de MIN a MAX
-                    scale = MIN_SCALE + ((MAX_SCALE - MIN_SCALE) * (elapsed / totalSeconds));
-                } else if (phaseType === 'hold') {
-                    // Se mantiene grande
-                    scale = MAX_SCALE;
-                } else if (phaseType === 'exhale') {
-                    // Se encoge gradualmente de MAX a MIN
-                    scale = MAX_SCALE - ((MAX_SCALE - MIN_SCALE) * (elapsed / totalSeconds));
+            // Determinar tramo del perímetro del cuadrado según la fase (0..25%, 25..50%, etc.)
+            let phaseIndex = type === 'inhale' ? 0 : type === 'hold-full' ? 1 : type === 'exhale' ? 2 : 3;
+            let startOffset = PERIMETER - (PERIMETER * (phaseIndex / 4));
+            let targetOffset = PERIMETER - (PERIMETER * ((phaseIndex + 1) / 4));
+
+            clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                let elapsedMs = Date.now() - startTime;
+                let progress = Math.min(elapsedMs / totalMs, 1);
+                let remainingSec = Math.ceil(seconds - (elapsedMs / 1000));
+
+                if (remainingSec >= 0) {
+                    circle.textContent = remainingSec > 0 ? remainingSec : 1;
                 }
 
-                circle.style.transform = `scale(${scale})`;
-                circle.textContent = currentSecond;
-            };
+                // Animación continua del trazo del cuadrado
+                let currentOffset = startOffset - ((startOffset - targetOffset) * progress);
+                boxProgress.style.strokeDashoffset = currentOffset;
 
-            // Ejecutar el primer paso inmediatamente
-            updateVisuals(remainingSeconds);
-
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
-                remainingSeconds--;
-                if (remainingSeconds >= 0) {
-                    updateVisuals(remainingSeconds);
+                // Animación de tamaño del círculo
+                if (type === 'inhale') {
+                    circle.style.transform = `scale(${1 + (0.6 * progress)})`;
+                } else if (type === 'hold-full') {
+                    circle.style.transform = 'scale(1.6)';
+                } else if (type === 'exhale') {
+                    circle.style.transform = `scale(${1.6 - (0.6 * progress)})`;
+                } else if (type === 'hold-empty') {
+                    circle.style.transform = 'scale(1)';
                 }
-                if (remainingSeconds <= 0) {
-                    clearInterval(countdownInterval);
+
+                if (progress >= 1) {
+                    clearInterval(timerInterval);
                     onComplete();
                 }
-            }, 1000);
+            }, 30);
         }
     </script>
 </body>
