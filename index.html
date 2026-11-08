@@ -54,8 +54,8 @@
 
         .box-wrapper {
             position: relative;
-            width: 220px;
-            height: 220px;
+            width: 240px;
+            height: 240px;
             margin: 20px auto;
             display: flex;
             justify-content: center;
@@ -73,11 +73,11 @@
         .box-bg {
             fill: none;
             stroke: #e6e0d8;
-            stroke-width: 8;
+            stroke-width: 6;
         }
 
-        /* Cuadrado exterior: avanza 1 lado por segundo */
-        .box-outer-progress {
+        /* Cuadrado Grande: Cada lado es una Fase (Inhalar, Sostener, Exhalar, Vacío) */
+        .box-large-progress {
             fill: none;
             stroke: var(--primary-color);
             stroke-width: 8;
@@ -87,19 +87,19 @@
             transition: stroke 0.3s ease;
         }
 
-        /* Cuadrado interior: representa la fase completa */
-        .box-inner-bg {
+        /* Cuadrado Pequeño Interior: Cada lado es 1 segundo (da 4 vueltas completas por fase) */
+        .box-small-progress {
             fill: none;
-            stroke: var(--primary-color);
+            stroke: #ffffff;
             stroke-width: 4;
-            opacity: 0.3;
-            transform-origin: center;
-            transition: transform 0.2s linear, stroke 0.3s ease;
+            stroke-dasharray: 400;
+            stroke-dashoffset: 400;
+            opacity: 0.8;
         }
 
         .breathing-circle {
-            width: 90px;
-            height: 90px;
+            width: 70px;
+            height: 70px;
             background-color: var(--primary-color);
             border-radius: 50%;
             display: flex;
@@ -107,10 +107,10 @@
             align-items: center;
             color: white;
             font-weight: bold;
-            font-size: 2.2rem;
-            box-shadow: 0 0 20px rgba(0,0,0,0.08);
+            font-size: 1.8rem;
+            box-shadow: 0 0 15px rgba(0,0,0,0.08);
             transform: scale(1);
-            transition: transform 0.1s linear, background-color 0.4s ease;
+            transition: background-color 0.4s ease;
             z-index: 2;
         }
 
@@ -186,13 +186,14 @@
         <p class="subtitle">Encuentra tu centro y calma tu mente</p>
 
         <div class="box-wrapper">
-            <svg class="box-svg" viewBox="0 0 220 220">
-                <!-- Fondo del cuadrado exterior -->
-                <rect class="box-bg" x="10" y="10" width="200" height="200" rx="8" />
-                <!-- Cuadrado exterior (1 lado = 1 segundo) -->
-                <rect class="box-outer-progress" id="outerProgress" x="10" y="10" width="200" height="200" rx="8" />
-                <!-- Cuadrado interior (Escala según fase) -->
-                <rect class="box-inner-bg" id="innerSquare" x="40" y="40" width="140" height="140" rx="6" />
+            <svg class="box-svg" viewBox="0 0 240 240">
+                <!-- Cuadrado Grande (Fases: 1 lado por fase) -->
+                <rect class="box-bg" x="20" y="20" width="200" height="200" rx="8" />
+                <rect class="box-large-progress" id="largeProgress" x="20" y="20" width="200" height="200" rx="8" />
+                
+                <!-- Cuadrado Pequeño Interior (Segundos: 1 lado por segundo, 4 vueltas por fase) -->
+                <rect class="box-bg" x="70" y="70" width="100" height="100" rx="4" />
+                <rect class="box-small-progress" id="smallProgress" x="70" y="70" width="100" height="100" rx="4" />
             </svg>
             <div class="breathing-circle" id="circle">--</div>
         </div>
@@ -207,7 +208,7 @@
         </div>
     </div>
 
-    <!-- Locuciones subidas por el usuario -->
+    <!-- Audios Locutados (del 1 al 8) -->
     <audio id="audio1" src="Audios/Audio1.mp3" preload="auto"></audio>
     <audio id="audio2" src="Audios/Audio2.mp3" preload="auto"></audio>
     <audio id="audio3" src="Audios/Audio3.mp3" preload="auto"></audio>
@@ -216,9 +217,6 @@
     <audio id="audio6" src="Audios/Audio6.mp3" preload="auto"></audio>
     <audio id="audio7" src="Audios/Audio7.mp3" preload="auto"></audio>
     <audio id="audio8" src="Audios/Audio8.mp3" preload="auto"></audio>
-
-    <!-- Pista de música ambiental suave desde CDN libre (sin requerir archivo local) -->
-    <audio id="bgAudio" src="https://cdn.pixabay.com/download/audio/2022/05/16/audio_c8b9d628f8.mp3" preload="auto" loop></audio>
 
     <script>
         let isRunning = false;
@@ -229,18 +227,19 @@
         let audioEnabled = true;
         let isDuringIntro = false;
 
+        // Web Audio API para música ambiental sintética interna (sin archivos externos bloqueados)
+        let audioCtx = null;
+        let ambientNode = null;
+        let ambientGain = null;
+
         const circle = document.getElementById('circle');
         const instructionText = document.getElementById('instructionText');
         const cycleText = document.getElementById('cycleText');
         const startBtn = document.getElementById('startBtn');
         const skipBtn = document.getElementById('skipBtn');
-        const outerProgress = document.getElementById('outerProgress');
-        const innerSquare = document.getElementById('innerSquare');
+        const largeProgress = document.getElementById('largeProgress');
+        const smallProgress = document.getElementById('smallProgress');
         const audioBtn = document.getElementById('audioBtn');
-        const bgAudio = document.getElementById('bgAudio');
-
-        // Música relajante al 8% de volumen
-        bgAudio.volume = 0.08;
 
         const audios = {
             1: document.getElementById('audio1'),
@@ -253,7 +252,49 @@
             8: document.getElementById('audio8')
         };
 
-        const TOTAL_PERIMETER = 800;
+        const LARGE_PERIMETER = 800; // 4 lados de 200px
+        const SMALL_PERIMETER = 400; // 4 lados de 100px
+
+        function initAmbientMusic() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            if (!ambientNode && audioEnabled) {
+                try {
+                    // Creamos un acorde ambiental relajante mediante osciladores armónicos
+                    ambientNode = audioCtx.createOscillator();
+                    let osc2 = audioCtx.createOscillator();
+                    ambientGain = audioCtx.createGain();
+
+                    ambientNode.type = 'sine';
+                    ambientNode.frequency.setValueAtTime(130.81, audioCtx.currentTime); // Nota Do (C3)
+                    osc2.type = 'triangle';
+                    osc2.frequency.setValueAtTime(196.00, audioCtx.currentTime); // Nota Sol (G3)
+
+                    ambientGain.gain.setValueAtTime(0.02, audioCtx.currentTime); // Volumen sutilísimo para no opacar la voz
+
+                    ambientNode.connect(ambientGain);
+                    osc2.connect(ambientGain);
+                    ambientGain.connect(audioCtx.destination);
+
+                    ambientNode.start();
+                    osc2.start();
+                } catch(e) { console.log(e); }
+            } else if (ambientGain && audioEnabled) {
+                ambientGain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+            }
+        }
+
+        function stopAmbientMusic() {
+            if (ambientGain && audioCtx) {
+                try {
+                    ambientGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+                } catch(e) {}
+            }
+        }
 
         function playAudioDynamic(audioElem) {
             return new Promise((resolve) => {
@@ -279,15 +320,18 @@
                     a.currentTime = 0;
                 }
             });
-            bgAudio.pause();
-            bgAudio.currentTime = 0;
+            stopAmbientMusic();
         }
 
         function toggleAudio() {
             audioEnabled = !audioEnabled;
             audioBtn.textContent = audioEnabled ? "🔊 Sonido: Activado" : "🔇 Sonido: Silenciado";
             Object.values(audios).forEach(a => { if (a) a.muted = !audioEnabled; });
-            bgAudio.muted = !audioEnabled;
+            if (!audioEnabled) {
+                stopAmbientMusic();
+            } else if (isRunning) {
+                initAmbientMusic();
+            }
         }
 
         async function toggleExercise() {
@@ -307,8 +351,7 @@
             isDuringIntro = true;
 
             if (audioEnabled) {
-                bgAudio.currentTime = 0;
-                bgAudio.play().catch(e => console.log(e));
+                initAmbientMusic();
             }
 
             instructionText.textContent = "Preparación...";
@@ -354,8 +397,8 @@
             circle.textContent = '--';
             instructionText.textContent = 'Haz clic en Iniciar';
             cycleText.textContent = 'Ciclo: 0 / 4';
-            outerProgress.style.strokeDashoffset = TOTAL_PERIMETER;
-            innerSquare.style.transform = 'scale(1)';
+            largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
+            smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
             startBtn.textContent = 'Iniciar Respiración';
             startBtn.style.backgroundColor = 'var(--primary-color)';
         }
@@ -393,7 +436,7 @@
         function runSyncedPhases(totalAudioDurationMs) {
             return new Promise((resolve) => {
                 let startTime = Date.now();
-                let phaseTimeMs = totalAudioDurationMs / 4; 
+                let phaseTimeMs = totalAudioDurationMs / 4; // Duración exacta de 1 fase (aprox 4s)
 
                 clearInterval(animationInterval);
 
@@ -411,44 +454,37 @@
                     let phaseElapsed = elapsed - (currentPhaseIndex * phaseTimeMs);
                     let phaseProgress = Math.min(phaseElapsed / phaseTimeMs, 1);
                     
-                    // Conteo descendente/ascendente de 1 a 4 segundos por fase
+                    // Conteo de segundos (1 a 4) dentro de la fase actual
                     let currentSecond = Math.min(Math.floor(phaseElapsed / (phaseTimeMs / 4)) + 1, 4);
                     circle.textContent = currentSecond;
 
-                    // 1 LADO = 1 SEGUNDO en el cuadrado exterior (200px por segundo)
-                    let sideProgress = (phaseElapsed % (phaseTimeMs / 4)) / (phaseTimeMs / 4);
-                    let outerOffset = TOTAL_PERIMETER - (((currentSecond - 1) * 200) + (200 * sideProgress));
-                    outerProgress.style.strokeDashoffset = outerOffset;
+                    // CUADRADO GRANDE: 1 lado por cada fase (4 fases en total)
+                    let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
+                    let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
+                    largeProgress.style.strokeDashoffset = largeTargetOffset;
 
-                    // Configuración visual por Fase
+                    // CUADRADO PEQUEÑO INTERIOR: Cada lado es 1 segundo (da 1 vuelta completa de 4 lados por fase)
+                    let secondProgress = (phaseElapsed % (phaseTimeMs / 4)) / (phaseTimeMs / 4);
+                    let smallOffset = SMALL_PERIMETER - (SMALL_PERIMETER * secondProgress);
+                    smallProgress.style.strokeDashoffset = smallOffset;
+
+                    // Textos y colores según la fase
                     if (currentPhaseIndex === 0) {
                         instructionText.textContent = "1. INHALA por la nariz";
-                        outerProgress.style.stroke = "var(--accent-inhale)";
-                        innerSquare.style.stroke = "var(--accent-inhale)";
+                        largeProgress.style.stroke = "var(--accent-inhale)";
                         circle.style.backgroundColor = "var(--accent-inhale)";
-                        circle.style.transform = `scale(${1 + (0.4 * phaseProgress)})`;
-                        innerSquare.style.transform = `scale(${1 + (0.2 * phaseProgress)})`;
                     } else if (currentPhaseIndex === 1) {
                         instructionText.textContent = "2. SOSTÉN EL AIRE";
-                        outerProgress.style.stroke = "var(--accent-hold1)";
-                        innerSquare.style.stroke = "var(--accent-hold1)";
+                        largeProgress.style.stroke = "var(--accent-hold1)";
                         circle.style.backgroundColor = "var(--accent-hold1)";
-                        circle.style.transform = "scale(1.4)";
-                        innerSquare.style.transform = "scale(1.2)";
                     } else if (currentPhaseIndex === 2) {
                         instructionText.textContent = "3. EXHALA despacio";
-                        outerProgress.style.stroke = "var(--accent-exhale)";
-                        innerSquare.style.stroke = "var(--accent-exhale)";
+                        largeProgress.style.stroke = "var(--accent-exhale)";
                         circle.style.backgroundColor = "var(--accent-exhale)";
-                        circle.style.transform = `scale(${1.4 - (0.4 * phaseProgress)})`;
-                        innerSquare.style.transform = `scale(${1.2 - (0.2 * phaseProgress)})`;
                     } else if (currentPhaseIndex === 3) {
                         instructionText.textContent = "4. SOSTÉN EN VACÍO";
-                        outerProgress.style.stroke = "var(--accent-hold2)";
-                        innerSquare.style.stroke = "var(--accent-hold2)";
+                        largeProgress.style.stroke = "var(--accent-hold2)";
                         circle.style.backgroundColor = "var(--accent-hold2)";
-                        circle.style.transform = "scale(1)";
-                        innerSquare.style.transform = "scale(1)";
                     }
 
                     if (elapsed >= totalAudioDurationMs) {
