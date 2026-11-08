@@ -216,6 +216,11 @@
             currentVoiceAudio = audioObj;
             currentVoiceAudio.currentTime = 0;
             
+            // Si es el Audio 1 (intro), recortamos el silencio excesivo inicial dejando solo 2 segundos
+            if (audioObj === voiceAudios.intro) {
+                currentVoiceAudio.currentTime = 2.0;
+            }
+            
             currentVoiceAudio.play().catch(err => {
                 console.warn("Error al reproducir voz:", err);
                 if (isRunning && onEndedCallback) onEndedCallback();
@@ -312,19 +317,19 @@
                 const t = cycleAudio.currentTime;
                 const duration = cycleAudio.duration || 16;
                 
-                // Tiempo exacto que dura la frase "Ciclo X" antes de que la voz empiece a decir "Inhala"
-                const introOffset = 3.0; 
+                // El ciclo 1 dice "Iniciamos, Ciclo 1..." por lo que su intro es más larga (~5.2s). Los demás ciclos usan ~3.0s.
+                const introOffset = (cycleNum === 1) ? 5.2 : 3.0; 
                 const breathingDuration = duration - introOffset;
 
                 if (t < introOffset) {
-                    // Durante el "Ciclo X...", el cuadro se mantiene limpio y vacío
+                    // Durante la presentación ("Iniciamos, Ciclo 1..."), el cuadrado se mantiene quieto y vacío
                     boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
                     instructionText.textContent = `Ciclo ${cycleNum}`;
                 } else if (t >= introOffset && t <= duration) {
                     const elapsedBreathing = t - introOffset;
                     const progress = Math.min(1, elapsedBreathing / breathingDuration);
                     
-                    // Dividir estrictamente en 4 fases secuenciales (0: Inhala, 1: Sostén, 2: Exhala, 3: Vacío)
+                    // Dividir estrictamente en 4 fases secuenciales (0: Inhala, 1: Sostén, 2: Exhala, 3: Vacío) sin superposiciones
                     const phaseIndex = Math.min(3, Math.floor(progress * 4));
                     const phaseProgress = (progress * 4) - phaseIndex; // 0.0 a 1.0 dentro de la fase actual
 
