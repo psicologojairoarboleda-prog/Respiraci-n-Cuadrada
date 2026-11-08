@@ -30,21 +30,19 @@ const LARGE_PERIMETER = 800;
 const SMALL_PERIMETER = 400;
 
 // =========================================================================
-// MAPA MAESTRO DE TIEMPOS POR CADA AUDIO DE CICLO
+// MAPA MAESTRO DE TIEMPOS EXACTOS (INTRO vs. ACCIÓN)
 // =========================================================================
-// Aquí defines claramente el segundo exacto en que termina la locución de 
-// introducción ("Iniciamos...") y arranca la acción ("Inhala con suavidad...").
-// Si un audio necesita que la animación empiece antes o después, solo cambias este valor.
+// 'introFin': Segundo exacto en que la voz termina "Iniciamos, primer ciclo..." 
+// y da paso inmediato a la primera línea de acción. Durante este tiempo TODO está quieto.
 const AUDIO_CONFIG = {
-    4: { introFin: 3.5 }, // Ciclo 1 (Audio4.mp3)
-    5: { introFin: 3.0 }, // Ciclo 2 (Audio5.mp3)
-    6: { introFin: 3.0 }, // Ciclo 3 (Audio6.mp3)
-    7: { introFin: 3.0 }  // Ciclo 4 (Audio7.mp3)
+    4: { introFin: 3.5 }, // Audio4_2.mp3
+    5: { introFin: 3.0 }, // Audio5_2.mp3
+    6: { introFin: 3.0 }, // Audio6_2.mp3
+    7: { introFin: 3.0 }  // Audio7_2.mp3
 };
 
-// Segundo exacto en el que deseas que la música ambiental empiece a sonar 
-// (para evitar baches o silencios al inicio de Audio9.mp3)
-const BACKGROUND_START_SECOND = 1.0;
+// Segundo exacto de Audio9_2.mp3 donde arranca la música con fuerza para evitar el silencio inicial
+const BACKGROUND_START_SECOND = 4.0;
 
 function playAudioDynamic(audioElem) {
     return new Promise((resolve) => {
@@ -93,7 +91,7 @@ async function startExercise() {
     skipBtn.style.display = 'block';
     isDuringIntro = true;
 
-    // Arrancar música de fondo limpia en el segundo configurado
+    // SOLUCIÓN AL SILENCIO INICIAL: Salta directamente al segundo con sonido activo de Audio9_2.mp3
     try {
         bgAudio.currentTime = BACKGROUND_START_SECOND;
         await bgAudio.play();
@@ -166,7 +164,7 @@ function runNextCycle() {
 
     if (!cycleAudio) return;
 
-    // Los cuadrados se quedan completamente estáticos y en cero al arrancar el audio
+    // CONGELACIÓN TOTAL durante toda la intro hablada de "Iniciamos, primer ciclo..."
     largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
     smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
     circle.textContent = '--';
@@ -181,7 +179,7 @@ function runNextCycle() {
         let activeDuration = totalDuration - introOffset;
         if (activeDuration < 10) activeDuration = 16; 
 
-        let phaseDuration = activeDuration / 4; 
+        let phaseDuration = activeDuration / 4; // Duración exacta de cada una de las 4 fases
         let startTime = null;
 
         function animateCycle(timestamp) {
@@ -190,7 +188,7 @@ function runNextCycle() {
 
             let elapsed = (timestamp - startTime) / 1000;
 
-            // ESTRICTO: Si no ha pasado el tiempo de la intro, los cuadrados no se mueven
+            // SI ESTÁ EN LA INTRO ("Iniciamos..."): NADA SE MUEVE
             if (elapsed < introOffset) {
                 largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
                 smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
@@ -199,7 +197,7 @@ function runNextCycle() {
                 return;
             }
 
-            // A partir de aquí la animación corre sincronizada segundo a segundo con el ejercicio
+            // COMIENZA LA ACCIÓN DE RESPIRACIÓN PASO A PASO
             let activeTime = elapsed - introOffset;
             let currentPhaseIndex = Math.floor(activeTime / phaseDuration);
 
@@ -210,10 +208,12 @@ function runNextCycle() {
             let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
             let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
 
+            // 1. CUADRADO GRANDE: Avanza un lado exacto por fase (Inhala, Sostén, Exhala, Vacío)
             let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
             let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
             largeProgress.style.strokeDashoffset = largeTargetOffset;
 
+            // 2. CUADRADO PEQUEÑO Y NÚMEROS: Se mueven EXCLUSIVAMENTE al ritmo del conteo (1, 2, 3, 4)
             let secondDuration = phaseDuration / 4;
             let currentSecond = Math.min(Math.floor(phaseElapsed / secondDuration) + 1, 4);
             circle.textContent = currentSecond;
@@ -222,6 +222,7 @@ function runNextCycle() {
             let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
             smallProgress.style.strokeDashoffset = smallOffset;
 
+            // Textos y colores sincronizados
             if (currentPhaseIndex === 0) {
                 instructionText.textContent = "1. INHALA por la nariz";
                 largeProgress.style.stroke = varColor('--accent-inhale');
