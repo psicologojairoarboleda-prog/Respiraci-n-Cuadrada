@@ -10,9 +10,9 @@
             --card-bg: #ffffff;
             --primary-color: #8b7bb0;
             --accent-inhale: #71b280;
-            --accent-hold: #8b7bb0;
+            --accent-hold1: #8b7bb0;
             --accent-exhale: #e08a68;
-            --accent-empty: #5c9ead;
+            --accent-hold2: #5c9ead;
             --text-color: #2c2c2c;
         }
 
@@ -52,7 +52,6 @@
             margin-bottom: 20px;
         }
 
-        /* Contenedor del Cuadrado Animado */
         .box-wrapper {
             position: relative;
             width: 220px;
@@ -63,21 +62,18 @@
             align-items: center;
         }
 
-        /* SVG para el dibujo del borde cuadrado por fases */
         .box-svg {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            transform: rotate(-90deg); /* Inicia desde arriba */
         }
 
         .box-bg {
             fill: none;
             stroke: #e6e0d8;
             stroke-width: 8;
-            rx: 16px;
         }
 
         .box-progress {
@@ -85,13 +81,11 @@
             stroke: var(--primary-color);
             stroke-width: 8;
             stroke-linecap: round;
-            rx: 16px;
-            stroke-dasharray: 800; /* Longitud total aproximada del perímetro */
+            stroke-dasharray: 800; /* Perímetro total (4 lados x 200px) */
             stroke-dashoffset: 800;
-            transition: stroke-dashoffset 0.1s linear, stroke 0.4s ease;
+            transition: stroke 0.3s ease;
         }
 
-        /* Círculo guía interior */
         .breathing-circle {
             width: 100px;
             height: 100px;
@@ -105,7 +99,7 @@
             font-size: 2.2rem;
             box-shadow: 0 0 20px rgba(0,0,0,0.08);
             transform: scale(1);
-            transition: transform 1s linear, background-color 0.5s ease;
+            transition: transform 0.1s linear, background-color 0.4s ease;
             z-index: 2;
         }
 
@@ -157,12 +151,12 @@
 
     <div class="container">
         <h1>RESPIRACIÓN CUADRÁTICA</h1>
-        <p class="subtitle">4s Inhala · 4s Sostén · 4s Exhala · 4s Vacío</p>
+        <p class="subtitle">Cada segundo dibuja 1 lado · 4s por fase</p>
 
         <div class="box-wrapper">
             <svg class="box-svg" viewBox="0 0 220 220">
-                <rect class="box-bg" x="10" y="10" width="200" height="200" />
-                <rect class="box-progress" id="boxProgress" x="10" y="10" width="200" height="200" />
+                <rect class="box-bg" x="10" y="10" width="200" height="200" rx="8" />
+                <rect class="box-progress" id="boxProgress" x="10" y="10" width="200" height="200" rx="8" />
             </svg>
             <div class="breathing-circle" id="circle">--</div>
         </div>
@@ -180,7 +174,7 @@
         let isRunning = false;
         let currentCycle = 0;
         const maxCycles = 4;
-        const phaseDuration = 4; // 4 segundos exactos por fase (Cuadrática)
+        const phaseSeconds = 4; // Cada fase dura 4 segundos
         
         let timerInterval = null;
         let audioEnabled = true;
@@ -192,10 +186,7 @@
         const boxProgress = document.getElementById('boxProgress');
         const audioBtn = document.getElementById('audioBtn');
 
-        // Medida del perímetro del cuadrado en el SVG
-        const PERIMETER = 800; 
-
-        // Web Audio API para tonos relajantes sin archivos externos
+        const TOTAL_PERIMETER = 800;
         let audioCtx = null;
 
         function initAudio() {
@@ -204,17 +195,15 @@
             }
         }
 
-        function playTone(freq, type = 'sine', duration = 0.4) {
+        function playTone(freq, duration = 0.3) {
             if (!audioEnabled || !audioCtx) return;
             try {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.type = type;
+                osc.type = 'sine';
                 osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                
-                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.start();
@@ -252,7 +241,7 @@
             circle.textContent = '--';
             instructionText.textContent = 'Haz clic en Iniciar';
             cycleText.textContent = 'Ciclo: 0 / 4';
-            boxProgress.style.strokeDashoffset = PERIMETER;
+            boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
             startBtn.textContent = 'Iniciar Respiración';
             startBtn.style.backgroundColor = 'var(--primary-color)';
         }
@@ -263,18 +252,18 @@
             currentCycle++;
             if (currentCycle > maxCycles) {
                 instructionText.textContent = '¡Sesión completada! Mente en calma.';
-                playTone(523.25, 'sine', 0.8); // Do agudo final
+                playTone(523.25, 0.8);
                 stopExercise();
                 return;
             }
 
             cycleText.textContent = `Ciclo: ${currentCycle} / ${maxCycles}`;
 
-            // Secuencia Cuadrática: Inhalar (4s) -> Sostener (4s) -> Exhalar (4s) -> Sostener Vacío (4s)
-            executePhase('1. INHALA por la nariz', phaseDuration, 'inhale', 'var(--accent-inhale)', 261.63, () => {
-                executePhase('2. SOSTÉN con aire', phaseDuration, 'hold-full', 'var(--accent-hold)', 329.63, () => {
-                    executePhase('3. EXHALA despacio', phaseDuration, 'exhale', 'var(--accent-exhale)', 293.66, () => {
-                        executePhase('4. SOSTÉN en vacío', phaseDuration, 'hold-empty', 'var(--accent-empty)', 220.00, () => {
+            // Fases independientes (4 segundos cada una)
+            runPhase('1. INHALA por la nariz', 'var(--accent-inhale)', 261.63, 'inhale', () => {
+                runPhase('2. SOSTÉN EL AIRE', 'var(--accent-hold1)', 329.63, 'hold1', () => {
+                    runPhase('3. EXHALA despacio', 'var(--accent-exhale)', 293.66, 'exhale', () => {
+                        runPhase('4. SOSTÉN EN VACÍO', 'var(--accent-hold2)', 220.00, 'hold2', () => {
                             runNextCycle();
                         });
                     });
@@ -282,45 +271,50 @@
             });
         }
 
-        function executePhase(text, seconds, type, color, toneFreq, onComplete) {
+        function runPhase(text, color, toneFreq, phaseType, onComplete) {
             if (!isRunning) return;
 
             instructionText.textContent = text;
             circle.style.backgroundColor = color;
             boxProgress.style.stroke = color;
-            playTone(toneFreq, 'sine', 0.5);
+            
+            // Reiniciar el marco para iniciar el trazado de los 4 lados de esta fase
+            boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
 
             let startTime = Date.now();
-            let totalMs = seconds * 1000;
-
-            // Determinar tramo del perímetro del cuadrado según la fase (0..25%, 25..50%, etc.)
-            let phaseIndex = type === 'inhale' ? 0 : type === 'hold-full' ? 1 : type === 'exhale' ? 2 : 3;
-            let startOffset = PERIMETER - (PERIMETER * (phaseIndex / 4));
-            let targetOffset = PERIMETER - (PERIMETER * ((phaseIndex + 1) / 4));
+            let totalMs = phaseSeconds * 1000;
+            let lastSecondPlayed = -1;
 
             clearInterval(timerInterval);
 
             timerInterval = setInterval(() => {
                 let elapsedMs = Date.now() - startTime;
                 let progress = Math.min(elapsedMs / totalMs, 1);
-                let remainingSec = Math.ceil(seconds - (elapsedMs / 1000));
+                
+                // Segundos transcurridos en la fase (1, 2, 3, 4)
+                let currentSecond = Math.min(Math.floor(elapsedMs / 1000) + 1, 4);
 
-                if (remainingSec >= 0) {
-                    circle.textContent = remainingSec > 0 ? remainingSec : 1;
+                // Sonido sutil en cada segundo que completa un lado
+                if (currentSecond !== lastSecondPlayed && currentSecond <= 4) {
+                    playTone(toneFreq + (currentSecond * 20), 0.15);
+                    lastSecondPlayed = currentSecond;
                 }
 
-                // Animación continua del trazo del cuadrado
-                let currentOffset = startOffset - ((startOffset - targetOffset) * progress);
+                // El número dentro del círculo muestra la cuenta del 1 al 4 (o de 4 a 1 si prefieres)
+                circle.textContent = currentSecond;
+
+                // El trazo completa exactamente un 25% del perímetro (1 lado) por cada segundo
+                let currentOffset = TOTAL_PERIMETER - (TOTAL_PERIMETER * progress);
                 boxProgress.style.strokeDashoffset = currentOffset;
 
-                // Animación de tamaño del círculo
-                if (type === 'inhale') {
-                    circle.style.transform = `scale(${1 + (0.6 * progress)})`;
-                } else if (type === 'hold-full') {
-                    circle.style.transform = 'scale(1.6)';
-                } else if (type === 'exhale') {
-                    circle.style.transform = `scale(${1.6 - (0.6 * progress)})`;
-                } else if (type === 'hold-empty') {
+                // Escala del círculo central
+                if (phaseType === 'inhale') {
+                    circle.style.transform = `scale(${1 + (0.5 * progress)})`;
+                } else if (phaseType === 'hold1') {
+                    circle.style.transform = 'scale(1.5)';
+                } else if (phaseType === 'exhale') {
+                    circle.style.transform = `scale(${1.5 - (0.5 * progress)})`;
+                } else if (phaseType === 'hold2') {
                     circle.style.transform = 'scale(1)';
                 }
 
@@ -328,7 +322,7 @@
                     clearInterval(timerInterval);
                     onComplete();
                 }
-            }, 30);
+            }, 20);
         }
     </script>
 </body>
