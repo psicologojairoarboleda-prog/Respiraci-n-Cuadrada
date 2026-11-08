@@ -76,7 +76,7 @@
             stroke-width: 6;
         }
 
-        /* Cuadrado Grande: 1 lado = 1 Fase */
+        /* Cuadrado Grande: 1 lado por cada fase exacta */
         .box-large-progress {
             fill: none;
             stroke: var(--primary-color);
@@ -87,14 +87,14 @@
             transition: stroke 0.3s ease;
         }
 
-        /* Cuadrado Pequeño: 1 lado = 1 Segundo */
+        /* Cuadrado Pequeño: 1 lado avanza exactamente por cada número (1, 2, 3, 4) */
         .box-small-progress {
             fill: none;
             stroke: #ffffff;
             stroke-width: 4;
             stroke-dasharray: 400;
             stroke-dashoffset: 400;
-            opacity: 0.9;
+            opacity: 0.95;
         }
 
         .breathing-circle {
@@ -166,17 +166,6 @@
         .btn-skip:hover {
             background-color: #bfaedc;
         }
-
-        .audio-toggle {
-            background: none;
-            border: 1px solid #ccc;
-            color: #555;
-            padding: 8px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            margin-top: 5px;
-        }
     </style>
 </head>
 <body>
@@ -187,11 +176,11 @@
 
         <div class="box-wrapper">
             <svg class="box-svg" viewBox="0 0 240 240">
-                <!-- Cuadrado Grande: 1 lado = 1 Fase -->
+                <!-- Cuadrado Grande: 1 lado por Fase -->
                 <rect class="box-bg" x="20" y="20" width="200" height="200" rx="8" />
                 <rect class="box-large-progress" id="largeProgress" x="20" y="20" width="200" height="200" rx="8" />
                 
-                <!-- Cuadrado Pequeño: 1 lado = 1 Segundo -->
+                <!-- Cuadrado Pequeño: 1 lado por Segundo (1, 2, 3, 4) -->
                 <rect class="box-bg" x="70" y="70" width="100" height="100" rx="4" />
                 <rect class="box-small-progress" id="smallProgress" x="70" y="70" width="100" height="100" rx="4" />
             </svg>
@@ -204,7 +193,6 @@
         <div class="controls">
             <button class="btn" id="startBtn" onclick="toggleExercise()">Iniciar Respiración</button>
             <button class="btn-skip" id="skipBtn" onclick="skipIntro()">⏭️ Saltar Introducción</button>
-            <button class="audio-toggle" id="audioBtn" onclick="toggleAudio()">🔊 Sonido: Activado</button>
         </div>
     </div>
 
@@ -218,7 +206,7 @@
     <audio id="audio7" src="Audios/Audio7.mp3" preload="auto"></audio>
     <audio id="audio8" src="Audios/Audio8.mp3" preload="auto"></audio>
 
-    <!-- Música de fondo de piano suave y relajante (en bucle) -->
+    <!-- Música de fondo de piano suave y relajante (en bucle continuo automático) -->
     <audio id="bgAudio" src="https://cdn.pixabay.com/download/audio/2022/05/16/audio_db32f790c3.mp3" preload="auto" loop></audio>
 
     <script>
@@ -227,7 +215,6 @@
         const maxCycles = 4;
         
         let animationInterval = null;
-        let audioEnabled = true;
         let isDuringIntro = false;
 
         const circle = document.getElementById('circle');
@@ -237,11 +224,10 @@
         const skipBtn = document.getElementById('skipBtn');
         const largeProgress = document.getElementById('largeProgress');
         const smallProgress = document.getElementById('smallProgress');
-        const audioBtn = document.getElementById('audioBtn');
         const bgAudio = document.getElementById('bgAudio');
 
-        // Volumen de piano ambiental muy sutil (8%)
-        bgAudio.volume = 0.08;
+        // Volumen de música ambiental al 15% (audible y relajante sin tapar la voz)
+        bgAudio.volume = 0.15;
 
         const audios = {
             1: document.getElementById('audio1'),
@@ -259,12 +245,11 @@
 
         function playAudioDynamic(audioElem) {
             return new Promise((resolve) => {
-                if (!audioEnabled || !audioElem) {
+                if (!audioElem) {
                     resolve();
                     return;
                 }
                 audioElem.currentTime = 0;
-                audioElem.muted = !audioEnabled;
                 audioElem.play().then(() => {
                     audioElem.onended = () => resolve();
                 }).catch(err => {
@@ -285,13 +270,6 @@
             bgAudio.currentTime = 0;
         }
 
-        function toggleAudio() {
-            audioEnabled = !audioEnabled;
-            audioBtn.textContent = audioEnabled ? "🔊 Sonido: Activado" : "🔇 Sonido: Silenciado";
-            Object.values(audios).forEach(a => { if (a) a.muted = !audioEnabled; });
-            bgAudio.muted = !audioEnabled;
-        }
-
         async function toggleExercise() {
             if (isRunning) {
                 stopExercise();
@@ -308,10 +286,9 @@
             skipBtn.style.display = 'block';
             isDuringIntro = true;
 
-            if (audioEnabled) {
-                bgAudio.currentTime = 0;
-                bgAudio.play().catch(e => console.log(e));
-            }
+            // La música ambiental arranca de fondo inmediatamente
+            bgAudio.currentTime = 0;
+            bgAudio.play().catch(e => console.log("Bg audio play blocked:", e));
 
             instructionText.textContent = "Preparación...";
             await playAudioDynamic(audios[1]);
@@ -375,18 +352,15 @@
 
             let cycleAudio = audios[currentCycle + 3];
 
-            if (audioEnabled && cycleAudio) {
+            if (cycleAudio) {
                 cycleAudio.currentTime = 0;
-                cycleAudio.muted = !audioEnabled;
-                
-                // Reproducimos el audio del ciclo y esperamos a que comience de verdad la locución de la primera fase
-                let playPromise = cycleAudio.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(e => console.log(e));
-                }
+                cycleAudio.play().catch(e => console.log(e));
 
-                let durationMs = (cycleAudio.duration && !isNaN(cycleAudio.duration)) ? cycleAudio.duration * 1000 : 16000;
+                // Pausa de 2.2 segundos para que concluya la palabra "Iniciamos..." antes de iniciar la animación visual
+                await new Promise(r => setTimeout(r, 2200));
+                if (!isRunning) return;
 
+                let durationMs = (cycleAudio.duration && !isNaN(cycleAudio.duration)) ? (cycleAudio.duration * 1000) - 2200 : 14000;
                 await runSyncedPhases(durationMs);
             } else {
                 await runSyncedPhases(16000);
@@ -397,10 +371,10 @@
             }
         }
 
-        function runSyncedPhases(totalAudioDurationMs) {
+        function runSyncedPhases(totalPhaseDurationMs) {
             return new Promise((resolve) => {
                 let startTime = Date.now();
-                let phaseTimeMs = totalAudioDurationMs / 4; // Cada una de las 4 fases ocupa el 25% exacto de la locución del ciclo
+                let subPhaseTimeMs = totalPhaseDurationMs / 4;
 
                 clearInterval(animationInterval);
 
@@ -412,26 +386,26 @@
                     }
 
                     let elapsed = Date.now() - startTime;
-                    let currentPhaseIndex = Math.floor(elapsed / phaseTimeMs);
+                    let currentPhaseIndex = Math.floor(elapsed / subPhaseTimeMs);
                     if (currentPhaseIndex > 3) currentPhaseIndex = 3;
 
-                    let phaseElapsed = elapsed - (currentPhaseIndex * phaseTimeMs);
-                    let phaseProgress = Math.min(phaseElapsed / phaseTimeMs, 1);
+                    let phaseElapsed = elapsed - (currentPhaseIndex * subPhaseTimeMs);
+                    let phaseProgress = Math.min(phaseElapsed / subPhaseTimeMs, 1);
                     
-                    // Conteo visual de 1 a 4 segundos sincronizado de forma limpia con los cuartos de fase
-                    let currentSecond = Math.min(Math.floor(phaseElapsed / (phaseTimeMs / 4)) + 1, 4);
+                    // Conteo 1, 2, 3, 4 mapeado a cada lado del cuadrado pequeño
+                    let currentSecond = Math.min(Math.floor(phaseElapsed / (subPhaseTimeMs / 4)) + 1, 4);
                     circle.textContent = currentSecond;
 
-                    // CUADRADO GRANDE: 1 lado por Fase (Avanza de forma continua y fluida con el audio)
+                    // CUADRADO GRANDE: Dibuja 1 lado exacto por cada fase pronunciada por la voz
                     let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
                     let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
                     largeProgress.style.strokeDashoffset = largeTargetOffset;
 
-                    // CUADRADO PEQUEÑO INTERIOR: Cada lado es 1 segundo (da una vuelta completa de 4 lados exactamente en cada fase)
-                    let smallOffset = SMALL_PERIMETER - (SMALL_PERIMETER * (phaseProgress * 4) % 1);
-                    smallProgress.style.strokeDashoffset = smallOffset;
+                    // CUADRADO PEQUEÑO: Dibuja 1 lado por cada número contado (1 a 4)
+                    let smallSubProgress = (phaseElapsed % (subPhaseTimeMs / 4)) / (subPhaseTimeMs / 4);
+                    let smallStartOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * smallSubProgress));
+                    smallProgress.style.strokeDashoffset = smallStartOffset;
 
-                    // Textos y colores de instrucción coordinados con el momento exacto
                     if (currentPhaseIndex === 0) {
                         instructionText.textContent = "1. INHALA por la nariz";
                         largeProgress.style.stroke = "var(--accent-inhale)";
@@ -454,7 +428,7 @@
                         circle.style.backgroundColor = "var(--accent-hold2)";
                     }
 
-                    if (elapsed >= totalAudioDurationMs) {
+                    if (elapsed >= totalPhaseDurationMs) {
                         clearInterval(animationInterval);
                         resolve();
                     }
