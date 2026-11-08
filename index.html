@@ -48,18 +48,25 @@
             margin-bottom: 20px;
         }
 
-        /* Contenedor del Cuadrado de Respiración */
+        /* Contenedor del Cuadrado de Respiración con el GIF al centro */
         .box-container {
             position: relative;
-            width: 200px;
-            height: 200px;
+            width: 220px;
+            height: 220px;
             margin: 20px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .box-svg {
-            width: 200px;
-            height: 200px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 220px;
+            height: 220px;
             transform: rotate(-90deg); /* Empieza arriba a la izquierda */
+            pointer-events: none;
         }
 
         .box-bg {
@@ -74,33 +81,43 @@
             stroke: var(--primary-color);
             stroke-width: 8;
             stroke-linecap: round;
-            stroke-dasharray: 800; /* Perímetro total del cuadrado (200x4) */
-            stroke-dashoffset: 800; /* Empieza completamente vacío */
-            transition: stroke-dashoffset 1s linear;
+            stroke-dasharray: 760; /* Perímetro total (190 * 4) */
+            stroke-dashoffset: 760; /* Empieza vacío */
+        }
+
+        /* Estilo armonioso para el GIF central ubicado en la carpeta Imagenes */
+        .center-graphic {
+            position: absolute;
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            opacity: 0.9;
+            z-index: 1;
         }
 
         .box-content {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            position: relative;
+            z-index: 2;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            background: rgba(255, 255, 255, 0.75);
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
         }
 
         .instruction {
-            font-size: 1.1rem;
-            font-weight: 600;
-            min-height: 30px;
-            margin-bottom: 5px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 2px;
             color: var(--primary-color);
         }
 
         .counter {
-            font-size: 2.2rem;
+            font-size: 1.8rem;
             font-weight: bold;
         }
 
@@ -134,17 +151,19 @@
 
     <div class="container">
         <h1>RESPIRACIÓN CUADRADA</h1>
-        <p class="subtitle">Cada lado del cuadro es una fase de 4 segundos</p>
+        <p class="subtitle">Sigue el ritmo de la armonía interior</p>
 
         <div class="box-container">
-            <svg class="box-svg" viewBox="0 0 200 200">
-                <!-- Marco de fondo gris -->
-                <rect class="box-bg" x="10" y="10" width="180" height="180" rx="15"/>
-                <!-- Marco que se va llenando dinámicamente -->
-                <rect id="boxProgress" class="box-progress" x="10" y="10" width="180" height="180" rx="15"/>
+            <!-- GIF ubicado en la carpeta Imagenes -->
+            <img src="Imagenes/GIF1.gif" alt="Meditación" class="center-graphic" id="meditationGif">
+            
+            <svg class="box-svg" viewBox="0 0 220 220">
+                <rect class="box-bg" x="15" y="15" width="190" height="190" rx="20"/>
+                <rect id="boxProgress" class="box-progress" x="15" y="15" width="190" height="190" rx="20"/>
             </svg>
+
             <div class="box-content">
-                <div class="instruction" id="instructionText">Haz clic en Iniciar</div>
+                <div class="instruction" id="instructionText">Listo</div>
                 <div class="counter" id="counterText">--</div>
             </div>
         </div>
@@ -156,12 +175,12 @@
     </div>
 
     <script>
-        // Música de fondo (Audio9.mp3)
+        // Música de fondo (Audio9.mp3 dentro de la carpeta Audios)
         const bgMusic = new Audio('Audios/Audio9.mp3');
         bgMusic.loop = true;
         bgMusic.volume = 0.3;
 
-        // Audios de voz
+        // Audios de voz dentro de la carpeta Audios
         const voiceAudios = {
             intro: new Audio('Audios/Audio1.mp3'),
             technique: new Audio('Audios/Audio2.mp3'),
@@ -175,8 +194,7 @@
 
         let isRunning = false;
         let currentVoiceAudio = null;
-        let currentTimer = null;
-        let phaseInterval = null;
+        let animationFrameId = null;
 
         const instructionText = document.getElementById('instructionText');
         const counterText = document.getElementById('counterText');
@@ -185,8 +203,8 @@
         const skipBtn = document.getElementById('skipBtn');
         const boxProgress = document.getElementById('boxProgress');
 
-        // Perímetro total del rectángulo SVG (180 * 4 = 720)
-        const TOTAL_PERIMETER = 720;
+        // Perímetro total del rectángulo SVG (190 * 4 = 760)
+        const TOTAL_PERIMETER = 760;
         boxProgress.style.strokeDasharray = TOTAL_PERIMETER;
         boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
 
@@ -228,10 +246,9 @@
             bgMusic.currentTime = 10;
             bgMusic.play().catch(err => console.warn("Música bloqueada:", err));
 
-            // Secuencia de introducción
-            playVoiceSequence(voiceAudios.intro, "Escucha las indicaciones...", () => {
-                playVoiceSequence(voiceAudios.technique, "Técnica de respiración...", () => {
-                    playVoiceSequence(voiceAudios.prep, "Prepárate...", () => {
+            playVoiceSequence(voiceAudios.intro, "Indicaciones", () => {
+                playVoiceSequence(voiceAudios.technique, "Técnica", () => {
+                    playVoiceSequence(voiceAudios.prep, "Prepárate", () => {
                         skipBtn.style.display = 'none';
                         runCycleSequence(1);
                     });
@@ -247,8 +264,7 @@
                 currentVoiceAudio.currentTime = 0;
                 currentVoiceAudio.onended = null;
             }
-            if (currentTimer) clearTimeout(currentTimer);
-            if (phaseInterval) clearInterval(phaseInterval);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
             skipBtn.style.display = 'none';
             runCycleSequence(1);
@@ -265,13 +281,11 @@
                 currentVoiceAudio.currentTime = 0;
                 currentVoiceAudio.onended = null;
             }
-            if (currentTimer) clearTimeout(currentTimer);
-            if (phaseInterval) clearInterval(phaseInterval);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
-            // Resetear interfaz
             boxProgress.style.transition = 'none';
             boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
-            instructionText.textContent = 'Haz clic en Iniciar';
+            instructionText.textContent = 'Listo';
             counterText.textContent = '--';
             cycleText.textContent = 'Ciclo: 0 / 4';
             startBtn.textContent = 'Iniciar Respiración';
@@ -284,8 +298,8 @@
 
             if (cycleNum > 4) {
                 cycleText.textContent = `Ciclo: 4 / 4`;
-                playVoiceSequence(voiceAudios.outro, "Finalizando...", () => {
-                    instructionText.textContent = '¡Excelente trabajo!';
+                playVoiceSequence(voiceAudios.outro, "Completado", () => {
+                    instructionText.textContent = '¡Paz!';
                     counterText.textContent = '✨';
                     stopExercise();
                 });
@@ -302,62 +316,65 @@
 
             cycleAudio.play().catch(err => console.warn("Error ciclo audio:", err));
 
-            // Sincronización exacta con el audio del ciclo:
-            // 1. Esperamos 3.5 segundos para que termine la intro hablada del ciclo ("Ciclo 1...") y empiece el conteo de la voz.
-            currentTimer = setTimeout(() => {
+            // Sincronización milimétrica segundo a segundo impulsada por el audio de voz real
+            function syncWithAudio() {
                 if (!isRunning) return;
-                startBoxBreathingPhases();
-            }, 3500);
+
+                const t = cycleAudio.currentTime;
+                const duration = cycleAudio.duration || 16;
+                
+                // Margen de intro en el audio del ciclo (ej. primeros 3.5s para decir "Ciclo X")
+                const introOffset = 3.5; 
+                const phaseTime = Math.max(1, (duration - introOffset) / 4); // Duración exacta de cada una de las 4 fases
+
+                if (t >= introOffset && t <= duration) {
+                    const elapsedInPhases = t - introOffset;
+                    const currentPhaseIndex = Math.min(3, Math.floor(elapsedInPhases / phaseTime));
+                    const phaseElapsed = elapsedInPhases % phaseTime;
+                    const phaseProgress = Math.min(1, phaseElapsed / phaseTime); // 0.0 a 1.0
+
+                    // Conteo dinámico de 1 a 4 dentro de la fase
+                    const currentCount = Math.min(4, Math.floor(phaseProgress * 4) + 1);
+                    counterText.textContent = currentCount;
+
+                    let targetOffset = TOTAL_PERIMETER;
+
+                    if (currentPhaseIndex === 0) {
+                        // Fase 1: Inhalar (Lado superior: 760 -> 570)
+                        instructionText.textContent = "Inhala";
+                        targetOffset = TOTAL_PERIMETER - (phaseProgress * 190);
+                    } else if (currentPhaseIndex === 1) {
+                        // Fase 2: Sostener (Lado derecho: 570 -> 380)
+                        instructionText.textContent = "Sostén";
+                        targetOffset = 570 - (phaseProgress * 190);
+                    } else if (currentPhaseIndex === 2) {
+                        // Fase 3: Exhalar (Lado inferior: 380 -> 190)
+                        instructionText.textContent = "Exhala";
+                        targetOffset = 380 - (phaseProgress * 190);
+                    } else if (currentPhaseIndex === 3) {
+                        // Fase 4: Vacío (Lado izquierdo: 190 -> 0)
+                        instructionText.textContent = "Vacío";
+                        targetOffset = 190 - (phaseProgress * 190);
+                    }
+
+                    boxProgress.style.transition = 'none';
+                    boxProgress.style.strokeDashoffset = targetOffset;
+                }
+
+                if (!cycleAudio.paused && !cycleAudio.ended) {
+                    animationFrameId = requestAnimationFrame(syncWithAudio);
+                }
+            }
+
+            cycleAudio.onplay = () => {
+                animationFrameId = requestAnimationFrame(syncWithAudio);
+            };
 
             cycleAudio.onended = () => {
                 if (isRunning) {
                     runCycleSequence(cycleNum + 1);
                 }
             };
-        }
-
-        // Ejecuta las 4 fases del cuadrado compuestas de 4 segundos cada una
-        function startBoxBreathingPhases() {
-            if (!isRunning) return;
-
-            // Fase 1: INHALAR (Lado Superior - Offset de 720 a 540)
-            runPhase("Inhala", 720, 540, () => {
-                if (!isRunning) return;
-                // Fase 2: SOSTENER (Lado Derecho - Offset de 540 a 360)
-                runPhase("Sostén", 540, 360, () => {
-                    if (!isRunning) return;
-                    // Fase 3: EXHALAR (Lado Inferior - Offset de 360 a 180)
-                    runPhase("Exhala", 360, 180, () => {
-                        if (!isRunning) return;
-                        // Fase 4: VACÍO / PAUSA (Lado Izquierdo - Offset de 180 a 0)
-                        runPhase("Vacío", 180, 0, () => {});
-                    });
-                });
-            });
-        }
-
-        function runPhase(text, startOffset, targetOffset, onComplete) {
-            if (!isRunning) return;
-
-            instructionText.textContent = text;
-            let secondsLeft = 4;
-            counterText.textContent = secondsLeft;
-
-            // Animar el trazo del lado del cuadro durante 4 segundos exactos
-            boxProgress.style.transition = 'stroke-dashoffset 4s linear';
-            boxProgress.style.strokeDashoffset = targetOffset;
-
-            phaseInterval = setInterval(() => {
-                secondsLeft--;
-                if (secondsLeft > 0 && isRunning) {
-                    counterText.textContent = secondsLeft;
-                }
-            }, 1000);
-
-            currentTimer = setTimeout(() => {
-                clearInterval(phaseInterval);
-                if (onComplete) onComplete();
-            }, 4000);
         }
     </script>
 </body>
