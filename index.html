@@ -206,14 +206,15 @@
     <audio id="audio7" src="Audios/Audio7.mp3" preload="auto"></audio>
     <audio id="audio8" src="Audios/Audio8.mp3" preload="auto"></audio>
 
+    <!-- Música ambiental de piano suave y relajante (en bucle continuo automático) -->
+    <audio id="bgAudio" src="https://cdn.pixabay.com/download/audio/2022/05/16/audio_db32f790c3.mp3" preload="auto" loop></audio>
+
     <script>
         let isRunning = false;
         let currentCycle = 0;
         const maxCycles = 4;
         
         let isDuringIntro = false;
-        let audioCtx = null;
-        let ambientGain = null;
 
         const circle = document.getElementById('circle');
         const instructionText = document.getElementById('instructionText');
@@ -222,6 +223,10 @@
         const skipBtn = document.getElementById('skipBtn');
         const largeProgress = document.getElementById('largeProgress');
         const smallProgress = document.getElementById('smallProgress');
+        const bgAudio = document.getElementById('bgAudio');
+
+        // Volumen de piano ambiental muy suave (12%)
+        bgAudio.volume = 0.12;
 
         const audios = {
             1: document.getElementById('audio1'),
@@ -237,48 +242,8 @@
         const LARGE_PERIMETER = 800;
         const SMALL_PERIMETER = 400;
 
-        // Tiempo exacto (en segundos) en que la voz termina de decir "Iniciamos..." y arranca el primer "Inhala"
+        // Segundo exacto en que termina la frase "Iniciamos..." y comienza la instrucción de inhalar
         const VOICE_START_OFFSET = 2.2;
-
-        function initAmbientAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            if (!ambientGain) {
-                try {
-                    let osc1 = audioCtx.createOscillator();
-                    let osc2 = audioCtx.createOscillator();
-                    ambientGain = audioCtx.createGain();
-
-                    osc1.type = 'sine';
-                    osc1.frequency.setValueAtTime(174, audioCtx.currentTime); // 174 Hz Solfeggio relax
-                    osc2.type = 'triangle';
-                    osc2.frequency.setValueAtTime(285, audioCtx.currentTime);
-
-                    ambientGain.gain.setValueAtTime(0.015, audioCtx.currentTime);
-
-                    osc1.connect(ambientGain);
-                    osc2.connect(ambientGain);
-                    ambientGain.connect(audioCtx.destination);
-
-                    osc1.start();
-                    osc2.start();
-                } catch(e) { console.log(e); }
-            } else {
-                ambientGain.gain.setValueAtTime(0.015, audioCtx.currentTime);
-            }
-        }
-
-        function stopAmbientAudio() {
-            if (ambientGain && audioCtx) {
-                try {
-                    ambientGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-                } catch(e) {}
-            }
-        }
 
         function playAudioDynamic(audioElem) {
             return new Promise((resolve) => {
@@ -304,7 +269,8 @@
                     a.currentTime = 0;
                 }
             });
-            stopAmbientAudio();
+            bgAudio.pause();
+            bgAudio.currentTime = 0;
         }
 
         async function toggleExercise() {
@@ -323,7 +289,9 @@
             skipBtn.style.display = 'block';
             isDuringIntro = true;
 
-            initAmbientAudio();
+            // Arranca el piano suave inmediatamente
+            bgAudio.currentTime = 0;
+            bgAudio.play().catch(e => console.log("Bg audio blocked:", e));
 
             instructionText.textContent = "Preparación...";
             await playAudioDynamic(audios[1]);
@@ -389,7 +357,7 @@
 
             if (!cycleAudio) return;
 
-            // Restablecer cuadrados completamente a cero y quietos al iniciar el audio del ciclo
+            // Asegurarnos de que ambos cuadrados comiencen completamente quietos y en cero
             largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
             smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
             circle.textContent = '--';
@@ -403,7 +371,7 @@
 
                 let currentTime = cycleAudio.currentTime;
 
-                // MANTENER AMBOS CUADROS COMPLETAMENTE QUIETOS DURANTE "INICIAMOS..."
+                // MANTENER AMBOS CUADROS ABSOLUTAMENTE QUIETOS DURANTE LA INTRODUCCIÓN ("Iniciamos...")
                 if (currentTime < VOICE_START_OFFSET) {
                     largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
                     smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
@@ -411,7 +379,7 @@
                     return;
                 }
 
-                // A PARTIR DE AQUÍ ARRANCA EL MOVIMIENTO REAL SINCRONIZADO
+                // A PARTIR DE AQUÍ ARRANCA EL MOVIMIENTO INDEPENDIENTE Y SINCRONIZADO
                 let activeTime = currentTime - VOICE_START_OFFSET;
                 let duration = (cycleAudio.duration && !isNaN(cycleAudio.duration)) ? cycleAudio.duration : (VOICE_START_OFFSET + 16);
                 let totalActiveDuration = duration - VOICE_START_OFFSET;
@@ -423,12 +391,12 @@
                 let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
                 let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
 
-                // CUADRADO GRANDE: 1 lado por cada fase exacta
+                // CUADRADO GRANDE: Avanza gradualmente un lado completo por cada fase
                 let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
                 let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
                 largeProgress.style.strokeDashoffset = largeTargetOffset;
 
-                // CUADRADO PEQUEÑO: 1 lado exacto por cada segundo contado (1, 2, 3, 4)
+                // CUADRADO PEQUEÑO: Permanece sincronizado de forma independiente dibujando 1 lado por cada segundo (1, 2, 3, 4)
                 let secondDuration = phaseDuration / 4;
                 let currentSecond = Math.min(Math.floor(phaseElapsed / secondDuration) + 1, 4);
                 circle.textContent = currentSecond;
@@ -437,7 +405,7 @@
                 let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
                 smallProgress.style.strokeDashoffset = smallOffset;
 
-                // Actualizar textos y colores según la fase precisa
+                // Actualizar instrucciones visuales y colores de la fase
                 if (currentPhaseIndex === 0) {
                     instructionText.textContent = "1. INHALA por la nariz";
                     largeProgress.style.stroke = "var(--accent-inhale)";
