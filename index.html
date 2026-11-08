@@ -58,9 +58,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: opacity 0.4s ease;
         }
 
-        /* Contenedor del Cuadrado de Respiración */
+        /* Contenedor del Cuadrado de Respiración con overflow oculto para evitar que sobresalga nada */
         .box-container {
             position: relative;
             width: 220px;
@@ -69,6 +70,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
+            border-radius: 20px;
         }
 
         .box-svg {
@@ -98,11 +101,11 @@
             stroke-dashoffset: 760; /* Empieza vacío */
         }
 
-        /* Efecto de ondas fluidas para la intro */
+        /* Efecto de ondas fluidas para la intro con transición suave */
         .waves-effect {
             position: absolute;
-            width: 180px;
-            height: 180px;
+            width: 170px;
+            height: 170px;
             border-radius: 50%;
             display: flex;
             justify-content: center;
@@ -111,11 +114,13 @@
             z-index: 1;
             background: radial-gradient(circle, rgba(139,123,176,0.12) 0%, rgba(139,123,176,0.02) 70%);
             opacity: 0;
-            transition: opacity 0.4s ease;
+            visibility: hidden;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out;
         }
 
         .waves-effect.active {
             opacity: 1;
+            visibility: visible;
         }
 
         .wave {
@@ -133,24 +138,27 @@
             100% { transform: scale(1.8); opacity: 0; }
         }
 
-        /* Imagen/GIF central sin marcos y con bordes difuminados */
+        /* Imagen/GIF central bien contenida, sin marcos y con desvanecimiento profundo en bordes */
         .center-graphic {
             position: absolute;
-            width: 205px;
-            height: 205px;
+            width: 170px;
+            height: 170px;
             object-fit: contain;
             z-index: 1;
             mix-blend-mode: multiply;
-            display: none; 
-            transition: opacity 0.4s ease;
             opacity: 0;
-            -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
-            mask-image: radial-gradient(circle, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
+            visibility: hidden;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out, transform 0.8s ease-in-out;
+            transform: scale(0.96);
+            /* Difuminado radial amplio y suave para integrar perfectamente sin bordes bruscos */
+            -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 75%);
+            mask-image: radial-gradient(circle, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 75%);
         }
 
         .center-graphic.active {
-            display: block;
             opacity: 1;
+            visibility: visible;
+            transform: scale(1);
         }
 
         .timer-info {
@@ -169,8 +177,12 @@
             font-weight: bold;
             cursor: pointer;
             width: 100%;
-            transition: background-color 0.3s ease;
+            transition: background-color 0.3s ease, transform 0.2s ease;
             margin-top: 8px;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
         }
 
         .btn-skip {
@@ -265,14 +277,12 @@
                 currentVoiceAudio.currentTime = 2.0;
             }
             
-            // Control visual según el audio en reproducción
+            // Control visual fluido según el audio
             if (audioObj === voiceAudios.intro || audioObj === voiceAudios.technique) {
-                // Intro y técnica muestran ondas fluidas
                 wavesEffect.classList.add('active');
                 meditationGif.classList.remove('active');
-                meditationGif.src = '';
             } else if (audioObj === voiceAudios.prep) {
-                // Audio de preparación ("siéntate y cierra los ojos"): muestra GIF.gif (postura fija/sentada)
+                // Audio de preparación ("Puedes sentarte..."): transiciona suavemente a GIF.gif (se sienta y se queda quieta)
                 wavesEffect.classList.remove('active');
                 meditationGif.src = 'Imagenes/GIF.gif';
                 meditationGif.classList.add('active');
@@ -320,7 +330,6 @@
             }
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
-            // Al saltar intro, muestra directamente la postura de preparación (GIF.gif)
             wavesEffect.classList.remove('active');
             meditationGif.src = 'Imagenes/GIF.gif';
             meditationGif.classList.add('active');
@@ -342,10 +351,9 @@
             }
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
-            // Apagar todo al detener
             wavesEffect.classList.remove('active');
             meditationGif.classList.remove('active');
-            meditationGif.src = '';
+            setTimeout(() => { meditationGif.src = ''; }, 800); // limpiar src tras la animación de salida
 
             boxProgress.style.transition = 'none';
             boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
@@ -378,6 +386,8 @@
             currentVoiceAudio.currentTime = 0;
 
             instructionText.textContent = `Ciclo ${cycleNum}`;
+            
+            let breathingStarted = false;
 
             cycleAudio.play().catch(err => console.warn("Error ciclo audio:", err));
 
@@ -393,15 +403,20 @@
                 const breathingDuration = Math.max(1, duration - introOffset);
 
                 if (t < introOffset) {
-                    // Durante la locución previa al ciclo ("Ciclo 1..."), muestra la postura fija (GIF.gif)
+                    // Muestra la postura sentada fija (GIF.gif) mientras se anuncia el número del ciclo
                     boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
                     instructionText.textContent = `Ciclo ${cycleNum}`;
-                    meditationGif.src = 'Imagenes/GIF.gif';
-                    meditationGif.classList.add('active');
+                    if (!breathingStarted) {
+                        meditationGif.src = 'Imagenes/GIF.gif';
+                        meditationGif.classList.add('active');
+                    }
                 } else if (t >= introOffset) {
-                    // EXACTAMENTE AQUÍ EMPIEZA "INHALA": Cambia al GIF de respiración activa (GIF1.gif)
-                    meditationGif.src = 'Imagenes/GIF1.gif';
-                    meditationGif.classList.add('active');
+                    // EXACTAMENTE AQUÍ EN "INHALA": Transición suave al GIF animado de respiración (GIF1.gif)
+                    if (!breathingStarted) {
+                        meditationGif.src = 'Imagenes/GIF1.gif';
+                        meditationGif.classList.add('active');
+                        breathingStarted = true;
+                    }
 
                     const elapsedBreathing = t - introOffset;
                     const progress = Math.min(1, Math.max(0, elapsedBreathing / breathingDuration));
