@@ -98,7 +98,7 @@
             stroke-dashoffset: 760; /* Empieza vacío */
         }
 
-        /* GIF central completamente visible y despejado */
+        /* Nuevo GIF central completamente visible y despejado */
         .center-graphic {
             position: absolute;
             width: 160px;
@@ -144,8 +144,8 @@
         <div class="instruction" id="instructionText">Listo</div>
 
         <div class="box-container">
-            <!-- GIF ubicado en la carpeta Imagenes -->
-            <img src="Imagenes/GIF1.gif" alt="Meditación" class="center-graphic" id="meditationGif">
+            <!-- Nuevo GIF ubicado en la carpeta Imagenes -->
+            <img src="Imagenes/GIF1_2.gif" alt="Meditación" class="center-graphic" id="meditationGif">
             
             <svg class="box-svg" viewBox="0 0 220 220">
                 <rect class="box-bg" x="15" y="15" width="190" height="190" rx="20"/>
@@ -207,7 +207,7 @@
             currentVoiceAudio = audioObj;
             currentVoiceAudio.currentTime = 0;
             
-            // Si es el Audio 1 (intro), recortamos el exceso inicial dejando solo 2 segundos
+            // Recortar silencio inicial excesivo del Audio 1 a 2 segundos
             if (audioObj === voiceAudios.intro) {
                 currentVoiceAudio.currentTime = 2.0;
             }
@@ -301,14 +301,14 @@
 
             cycleAudio.play().catch(err => console.warn("Error ciclo audio:", err));
 
-            // Sincronización milimétrica estricta y sincronizada con el audio real de cada ciclo
+            // Sincronización milimétrica estricta con el audio real de cada ciclo
             function syncWithAudio() {
                 if (!isRunning) return;
 
                 const t = cycleAudio.currentTime;
                 const duration = cycleAudio.duration || 16;
                 
-                // Tiempo de espera exacto antes de que empiece "Inhala" en cada ciclo
+                // Tiempo de espera exacto antes de que empiece "Inhala" (Ciclo 1: 5.2s, Ciclos 2-4: 3.0s)
                 const introOffset = (cycleNum === 1) ? 5.2 : 3.0; 
                 const breathingDuration = Math.max(1, duration - introOffset);
 
