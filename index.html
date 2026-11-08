@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guía de Respiración Cuadrada | Práctica Guiada</title>
+    <title>Guía de Respiración Cuadrada</title>
     <style>
         :root {
             --bg-color: #f7f5f0;
@@ -28,54 +28,53 @@
 
         .container {
             background-color: var(--card-bg);
-            max-width: 500px;
+            max-width: 480px;
             width: 90%;
             padding: 40px;
-            border-radius: 16px;
+            border-radius: 20px;
             box-shadow: 0 10px 30px var(--shadow-color);
             text-align: center;
             box-sizing: border-box;
         }
 
         h1 {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 500;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             letter-spacing: -0.5px;
         }
 
         p.subtitle {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: var(--accent-color);
-            margin-bottom: 30px;
+            margin-bottom: 35px;
         }
 
         .breathing-circle {
-            width: 180px;
-            height: 180px;
+            width: 160px;
+            height: 160px;
             border: 4px solid var(--accent-light);
             border-radius: 50%;
             margin: 0 auto 30px auto;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: 500;
-            transition: all 1s ease;
-            position: relative;
+            color: var(--text-color);
+            transition: all 0.5s ease;
         }
 
         .instructions-box {
             background-color: var(--bg-color);
-            padding: 20px;
+            padding: 18px;
             border-radius: 12px;
             margin-bottom: 30px;
-            min-height: 60px;
+            min-height: 50px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 1.05rem;
-            font-weight: 400;
+            font-size: 0.95rem;
         }
 
         button {
@@ -83,10 +82,11 @@
             color: #ffffff;
             border: none;
             padding: 14px 32px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             border-radius: 30px;
             cursor: pointer;
             transition: opacity 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
         button:hover {
@@ -98,7 +98,7 @@
         }
 
         .hidden {
-            display: none;
+            display: none !important;
         }
     </style>
 </head>
@@ -106,83 +106,97 @@
 
     <div class="container">
         <h1>Respiración Cuadrada</h1>
-        <p class="subtitle">Encuentra tu calma y presencia</p>
+        <p class="subtitle">Práctica guiada de relajación</p>
 
         <div class="instructions-box" id="instructionText">
-            Presiona el botón para iniciar la práctica de respiración.
+            Presiona el botón para comenzar la práctica.
         </div>
 
         <div class="breathing-circle" id="circle">
             <span id="statusLabel">Listo</span>
         </div>
 
-        <button id="startButton" onclick="startPractice()">Iniciar Práctica</button>
+        <button id="startButton" onclick="initPractice()">Iniciar Práctica</button>
     </div>
 
-    <!-- Elemento de Audio de Fondo (Audio 9) -->
-    <!-- Nota: Asegúrate de que la ruta de la carpeta en tu repositorio sea correcta -->
-    <audio id="bgMusic" src="audio/Audio9.mp3" preload="auto" loop></audio>
-
     <script>
-        const bgMusic = document.getElementById('bgMusic');
+        // Configuración de rutas de los audios (Ajusta la ruta de la carpeta si es necesario, ej: './Audio1.mp3' o 'audio/Audio1.mp3')
+        // Basado en que están en la misma carpeta del repositorio, se enlazan de manera directa o mediante subcarpeta.
+        const audioFiles = [
+            'Audio1.mp3',
+            'Audio2.mp3',
+            'Audio3.mp3',
+            'Audio4.mp3',
+            'Audio5.mp3',
+            'Audio6.mp3',
+            'Audio7.mp3',
+            'Audio8.mp3'
+        ];
+
+        const bgMusicFile = 'Audio9.mp3';
+
+        let currentIndex = 0;
+        let bgAudio = null;
+        let currentGuideAudio = null;
+        let isRunning = false;
+
         const startButton = document.getElementById('startButton');
         const instructionText = document.getElementById('instructionText');
         const statusLabel = document.getElementById('statusLabel');
-        const circle = document.getElementById('circle');
 
-        // Lista de audios secuenciales del 1 al 8
-        const guideAudioFiles = [
-            'audio/Audio1.mp3',
-            'audio/Audio2.mp3',
-            'audio/Audio3.mp3',
-            'audio/Audio4.mp3',
-            'audio/Audio5.mp3',
-            'audio/Audio6.mp3',
-            'audio/Audio7.mp3',
-            'audio/Audio8.mp3'
-        ];
+        function initPractice() {
+            if (isRunning) return;
+            isRunning = true;
 
-        let currentAudioIndex = 0;
-        let activeGuideAudio = null;
-
-        function startPractice() {
-            // Ocultar botón y preparar interfaz
             startButton.classList.add('hidden');
-            instructionText.innerText = "Comenzando ejercicio de respiración...";
+            instructionText.innerText = "Iniciando ejercicio...";
+            statusLabel.innerText = "Conectando...";
 
-            // 1. Iniciar la música de fondo (Audio 9) desde el segundo 0 exacto
-            bgMusic.currentTime = 0;
-            bgMusic.play().catch(error => {
-                console.log("Reproducción de fondo bloqueada o error:", error);
+            // 1. Inicializar y reproducir la música de fondo (Audio 9) desde el segundo 0
+            bgAudio = new Audio(bgMusicFile);
+            bgAudio.loop = true;
+            bgAudio.currentTime = 0;
+            bgAudio.volume = 0.4; // Volumen moderado para que acompañe la voz de guía
+            
+            bgAudio.play().then(() => {
+                console.log("Música de fondo (Audio 9) iniciada correctamente.");
+            }).catch(e => {
+                console.warn("Error al reproducir audio 9 (fondo):", e);
             });
 
-            // 2. Iniciar la secuencia de audios guías de 1 a 8
-            playNextGuideAudio();
+            // 2. Comenzar la secuencia de los audios guías (1 al 8)
+            playSequenceAudio(0);
         }
 
-        function playNextGuideAudio() {
-            if (currentAudioIndex < guideAudioFiles.length) {
-                activeGuideAudio = new Audio(guideAudioFiles[currentAudioIndex]);
+        function playSequenceAudio(index) {
+            if (index >= audioFiles.length) {
+                // Fin de la secuencia completa
+                instructionText.innerText = "Práctica finalizada. Buen trabajo.";
+                statusLabel.innerText = "Completado";
                 
-                activeGuideAudio.play().then(() => {
-                    statusLabel.innerText = `Guía ${currentAudioIndex + 1}/8`;
-                }).catch(err => {
-                    console.log("Error al reproducir audio guía:", err);
-                });
-
-                // Cuando termine el audio actual de la guía, pasar al siguiente de forma fluida
-                activeGuideAudio.onended = () => {
-                    currentAudioIndex++;
-                    playNextGuideAudio();
-                };
-            } else {
-                // Al terminar todos los audios de guía (del 1 al 8)
-                instructionText.innerText = "Práctica finalizada. Gracias por meditar.";
-                statusLabel.innerText = "Finalizado";
-                
-                // Opcional: desvanecer o detener la música de fondo al terminar
-                // bgMusic.pause(); 
+                // Opcional: Desvanecer o apagar la música de fondo al terminar la práctica
+                if (bgAudio) {
+                    bgAudio.pause();
+                }
+                return;
             }
+
+            currentIndex = index;
+            currentGuideAudio = new Audio(audioFiles[currentIndex]);
+
+            currentGuideAudio.play().then(() => {
+                instructionText.innerText = `Reproduciendo guía de respiración...`;
+                statusLabel.innerText = `Paso ${currentIndex + 1} de 8`;
+            }).catch(error => {
+                console.error(`Error al reproducir el archivo ${audioFiles[currentIndex]}:`, error);
+                // Si un archivo falla, salta automáticamente al siguiente para evitar que se quede estático
+                playSequenceAudio(currentIndex + 1);
+            });
+
+            // Evento cuando termina el audio actual para pasar fluidamente al siguiente
+            currentGuideAudio.onended = () => {
+                playSequenceAudio(currentIndex + 1);
+            };
         }
     </script>
 </body>
