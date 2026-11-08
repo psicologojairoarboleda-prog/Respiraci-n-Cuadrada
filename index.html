@@ -119,20 +119,21 @@
     </div>
 
     <script>
-        // Mapeo de archivos de audio
-        const bgMusic = new Audio('audio1.mp3'); // Música de fondo (Audio Nueve)
+        // Música de fondo dentro de la carpeta Audios
+        const bgMusic = new Audio('Audios/Audio9.mp3');
         bgMusic.loop = true;
-        bgMusic.volume = 0.3; // Volumen moderado para no tapar la voz
+        bgMusic.volume = 0.3; // Volumen suave de fondo
 
+        // Audios de voz dentro de la carpeta Audios
         const voiceAudios = {
-            intro: new Audio('audio9.mp3'),         // Introducción a la técnica
-            technique: new Audio('audio8.mp3'),     // Explicación de las 4 fases
-            prep: new Audio('audio7.mp3'),          // Preparación/Exhalación inicial
-            cycle1: new Audio('audio6.mp3'),        // Ciclo 1
-            cycle2: new Audio('audio5.mp3'),        // Ciclo 2
-            cycle3: new Audio('audio4.mp3'),        // Ciclo 3
-            cycle4: new Audio('audio3.mp3'),        // Ciclo 4
-            outro: new Audio('audio2.mp3')          // Cierre y retorno
+            intro: new Audio('Audios/Audio1.mp3'),
+            technique: new Audio('Audios/Audio2.mp3'),
+            prep: new Audio('Audios/Audio3.mp3'),
+            cycle1: new Audio('Audios/Audio4.mp3'),
+            cycle2: new Audio('Audios/Audio5.mp3'),
+            cycle3: new Audio('Audios/Audio6.mp3'),
+            cycle4: new Audio('Audios/Audio7.mp3'),
+            outro: new Audio('Audios/Audio8.mp3')
         };
 
         let isRunning = false;
@@ -162,7 +163,10 @@
             currentVoiceAudio = audioObj;
             currentVoiceAudio.currentTime = 0;
             
-            currentVoiceAudio.play().catch(err => console.error("Error al reproducir audio de voz:", err));
+            currentVoiceAudio.play().catch(err => {
+                console.warn("Error al reproducir voz:", err);
+                if (isRunning && onEndedCallback) onEndedCallback();
+            });
             
             currentVoiceAudio.onended = () => {
                 if (isRunning && onEndedCallback) {
@@ -176,13 +180,13 @@
             startBtn.textContent = 'Detener';
             startBtn.style.backgroundColor = '#d9534f';
 
-            // 1. Iniciar música de fondo desde el segundo 10
+            // Iniciar música de fondo (Audio9) desde el segundo 10
             bgMusic.currentTime = 10;
-            bgMusic.play().catch(err => console.error("Error al reproducir música de fondo:", err));
+            bgMusic.play().catch(err => console.warn("Música bloqueada por navegador:", err));
 
-            // 2. Secuencia de audios introductorios antes de los ciclos
-            playVoiceSequence(voiceAudios.intro, "Escucha la introducción...", () => {
-                playVoiceSequence(voiceAudios.technique, "Explicación de la técnica...", () => {
+            // Secuencia de audios de voz
+            playVoiceSequence(voiceAudios.intro, "Escucha las indicaciones...", () => {
+                playVoiceSequence(voiceAudios.technique, "Técnica de respiración...", () => {
                     playVoiceSequence(voiceAudios.prep, "Prepárate...", () => {
                         runCycleSequence(1);
                     });
@@ -193,11 +197,9 @@
         function stopExercise() {
             isRunning = false;
             
-            // Pausar y reiniciar música de fondo
             bgMusic.pause();
             bgMusic.currentTime = 10;
 
-            // Pausar audio de voz actual
             if (currentVoiceAudio) {
                 currentVoiceAudio.pause();
                 currentVoiceAudio.currentTime = 0;
@@ -205,7 +207,6 @@
 
             clearInterval(countdownInterval);
 
-            // Restablecer interfaz de usuario
             circle.style.transform = `scale(${MIN_SCALE})`;
             circle.style.backgroundColor = 'var(--primary-color)';
             circle.textContent = '--';
@@ -219,7 +220,6 @@
             if (!isRunning) return;
 
             if (cycleNum > 4) {
-                // Secuencia finalizada: Audio de cierre
                 cycleText.textContent = `Ciclo: 4 / 4`;
                 playVoiceSequence(voiceAudios.outro, "Finalizando...", () => {
                     instructionText.textContent = '¡Excelente trabajo! Te has relajado.';
@@ -231,12 +231,10 @@
             cycleText.textContent = `Ciclo: ${cycleNum} / 4`;
             const cycleAudio = voiceAudios[`cycle${cycleNum}`];
 
-            // Reproduce la guía de voz del ciclo y sincroniza el temporizador visual (4s por fase)
             playVoiceSequence(cycleAudio, `Ciclo ${cycleNum} en curso...`, () => {
                 runCycleSequence(cycleNum + 1);
             });
 
-            // Animación sincronizada con la voz (Inhala, Sostén, Exhala, Pausa)
             runVisualPhase('inhale', 4, '#9d8ec2', () => {
                 runVisualPhase('hold', 4, '#8b7bb0', () => {
                     runVisualPhase('exhale', 4, '#bdae8b', () => {
