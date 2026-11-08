@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Respiración Cuadrática - Box Breathing</title>
+    <title>Respiración Cuadrática - Meditación Guiada</title>
     <style>
         :root {
             --bg-color: #f4f0ea;
@@ -104,10 +104,13 @@
         }
 
         .instruction {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 600;
-            min-height: 30px;
+            min-height: 40px;
             margin: 15px 0 5px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .timer-info {
@@ -170,8 +173,15 @@
         </div>
     </div>
 
-    <!-- Etiqueta de audio oculta para tu grabación introductoria -->
-    <audio id="introAudio" src="intro.mp3" preload="auto"></audio>
+    <!-- Carga de audios desde la carpeta Audios/ -->
+    <audio id="audio1" src="Audios/Audio1.mp3" preload="auto"></audio>
+    <audio id="audio2" src="Audios/Audio2.mp3" preload="auto"></audio>
+    <audio id="audio3" src="Audios/Audio3.mp3" preload="auto"></audio>
+    <audio id="audio4" src="Audios/Audio4.mp3" preload="auto"></audio>
+    <audio id="audio5" src="Audios/Audio5.mp3" preload="auto"></audio>
+    <audio id="audio6" src="Audios/Audio6.mp3" preload="auto"></audio>
+    <audio id="audio7" src="Audios/Audio7.mp3" preload="auto"></audio>
+    <audio id="audio8" src="Audios/Audio8.mp3" preload="auto"></audio>
 
     <script>
         let isRunning = false;
@@ -181,6 +191,7 @@
         
         let timerInterval = null;
         let audioEnabled = true;
+        let currentPlayingAudio = null;
 
         const circle = document.getElementById('circle');
         const instructionText = document.getElementById('instructionText');
@@ -188,41 +199,58 @@
         const startBtn = document.getElementById('startBtn');
         const boxProgress = document.getElementById('boxProgress');
         const audioBtn = document.getElementById('audioBtn');
-        const introAudio = document.getElementById('introAudio');
+
+        const audios = {
+            1: document.getElementById('audio1'),
+            2: document.getElementById('audio2'),
+            3: document.getElementById('audio3'),
+            4: document.getElementById('audio4'),
+            5: document.getElementById('audio5'),
+            6: document.getElementById('audio6'),
+            7: document.getElementById('audio7'),
+            8: document.getElementById('audio8')
+        };
 
         const TOTAL_PERIMETER = 800;
-        let audioCtx = null;
 
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
+        function playAudioFile(audioElem) {
+            return new Promise((resolve) => {
+                if (!audioEnabled || !audioElem) {
+                    resolve();
+                    return;
+                }
+                stopAllAudios();
+                currentPlayingAudio = audioElem;
+                audioElem.currentTime = 0;
+                audioElem.muted = !audioEnabled;
+                
+                audioElem.play().then(() => {
+                    audioElem.onended = () => resolve();
+                }).catch(err => {
+                    console.log("Audio play blocked:", err);
+                    resolve();
+                });
+            });
         }
 
-        function playTone(freq, duration = 0.3) {
-            if (!audioEnabled || !audioCtx) return;
-            try {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start();
-                osc.stop(audioCtx.currentTime + duration);
-            } catch(e) { console.log(e); }
+        function stopAllAudios() {
+            Object.values(audios).forEach(a => {
+                if (a) {
+                    a.pause();
+                    a.currentTime = 0;
+                }
+            });
         }
 
         function toggleAudio() {
             audioEnabled = !audioEnabled;
             audioBtn.textContent = audioEnabled ? "🔊 Sonido: Activado" : "🔇 Sonido: Silenciado";
-            introAudio.muted = !audioEnabled;
+            Object.values(audios).forEach(a => {
+                if (a) a.muted = !audioEnabled;
+            });
         }
 
-        function toggleExercise() {
-            initAudio();
+        async function toggleExercise() {
             if (isRunning) {
                 stopExercise();
             } else {
@@ -230,26 +258,33 @@
             }
         }
 
-        function startExercise() {
+        async function startExercise() {
             isRunning = true;
             currentCycle = 0;
             startBtn.textContent = 'Detener';
             startBtn.style.backgroundColor = '#d9534f';
 
-            // Reproducir el audio introductorio justo al arrancar (siempre que el sonido esté activado)
-            if (audioEnabled) {
-                introAudio.currentTime = 0;
-                introAudio.play().catch(err => console.log("Audio play blocked:", err));
-            }
+            // 1. Introducción y Postura (Audios 1 a 3)
+            instructionText.textContent = "Escucha las indicaciones...";
+            await playAudioFile(audios[1]);
+            if (!isRunning) return;
 
+            await playAudioFile(audios[2]);
+            if (!isRunning) return;
+
+            instructionText.textContent = "Toma una respiración profunda...";
+            await playAudioFile(audios[3]);
+            if (!isRunning) return;
+
+            // 2. Iniciar Ciclos de Respiración Cuadrática
             runNextCycle();
         }
 
         function stopExercise() {
             isRunning = false;
             clearInterval(timerInterval);
-            introAudio.pause();
-            introAudio.currentTime = 0;
+            stopAllAudios();
+
             circle.style.transform = 'scale(1)';
             circle.style.backgroundColor = 'var(--primary-color)';
             circle.textContent = '--';
@@ -265,18 +300,25 @@
 
             currentCycle++;
             if (currentCycle > maxCycles) {
-                instructionText.textContent = '¡Sesión completada! Mente en calma.';
-                playTone(523.25, 0.8);
-                stopExercise();
+                finishSession();
                 return;
             }
 
             cycleText.textContent = `Ciclo: ${currentCycle} / ${maxCycles}`;
 
-            runPhase('1. INHALA por la nariz', 'var(--accent-inhale)', 261.63, 'inhale', () => {
-                runPhase('2. SOSTÉN EL AIRE', 'var(--accent-hold1)', 329.63, 'hold1', () => {
-                    runPhase('3. EXHALA despacio', 'var(--accent-exhale)', 293.66, 'exhale', () => {
-                        runPhase('4. SOSTÉN EN VACÍO', 'var(--accent-hold2)', 220.00, 'hold2', () => {
+            // Seleccionar el audio del ciclo correspondiente (Audio 4 al 7)
+            let cycleAudio = audios[currentCycle + 3];
+            if (cycleAudio && audioEnabled) {
+                cycleAudio.currentTime = 0;
+                cycleAudio.muted = !audioEnabled;
+                cycleAudio.play().catch(e => console.log(e));
+            }
+
+            // Ejecutar las 4 fases de animación del cuadrado sincronizadas
+            runPhase('1. INHALA por la nariz', 'var(--accent-inhale)', 'inhale', () => {
+                runPhase('2. SOSTÉN EL AIRE', 'var(--accent-hold1)', 'hold1', () => {
+                    runPhase('3. EXHALA despacio', 'var(--accent-exhale)', 'exhale', () => {
+                        runPhase('4. SOSTÉN EN VACÍO', 'var(--accent-hold2)', 'hold2', () => {
                             runNextCycle();
                         });
                     });
@@ -284,7 +326,7 @@
             });
         }
 
-        function runPhase(text, color, toneFreq, phaseType, onComplete) {
+        function runPhase(text, color, phaseType, onComplete) {
             if (!isRunning) return;
 
             instructionText.textContent = text;
@@ -294,7 +336,6 @@
 
             let startTime = Date.now();
             let totalMs = phaseSeconds * 1000;
-            let lastSecondPlayed = -1;
 
             clearInterval(timerInterval);
 
@@ -302,11 +343,6 @@
                 let elapsedMs = Date.now() - startTime;
                 let progress = Math.min(elapsedMs / totalMs, 1);
                 let currentSecond = Math.min(Math.floor(elapsedMs / 1000) + 1, 4);
-
-                if (currentSecond !== lastSecondPlayed && currentSecond <= 4) {
-                    playTone(toneFreq + (currentSecond * 20), 0.15);
-                    lastSecondPlayed = currentSecond;
-                }
 
                 circle.textContent = currentSecond;
 
@@ -328,6 +364,17 @@
                     onComplete();
                 }
             }, 20);
+        }
+
+        async function finishSession() {
+            instructionText.textContent = 'Regresando a tu ritmo natural...';
+            cycleText.textContent = 'Completado';
+            
+            // Audio 8: Cierre y regreso al presente
+            await playAudioFile(audios[8]);
+            
+            instructionText.textContent = '¡Excelente trabajo!';
+            stopExercise();
         }
     </script>
 </body>
