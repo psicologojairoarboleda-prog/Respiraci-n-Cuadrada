@@ -48,7 +48,7 @@
             margin-bottom: 20px;
         }
 
-        /* Contenedor del Cuadrado de Respiración con el GIF al centro */
+        /* Contenedor del Cuadrado de Respiración */
         .box-container {
             position: relative;
             width: 220px;
@@ -67,6 +67,7 @@
             height: 220px;
             transform: rotate(-90deg); /* Empieza arriba a la izquierda */
             pointer-events: none;
+            z-index: 3;
         }
 
         .box-bg {
@@ -85,40 +86,36 @@
             stroke-dashoffset: 760; /* Empieza vacío */
         }
 
-        /* Estilo armonioso para el GIF central ubicado en la carpeta Imagenes */
+        /* GIF central sincronizado con escala dinámica */
         .center-graphic {
             position: absolute;
-            width: 110px;
-            height: 110px;
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
             object-fit: cover;
-            opacity: 0.9;
+            opacity: 0.95;
             z-index: 1;
+            transform: scale(1);
+            transition: transform 0.8s ease-in-out;
         }
 
         .box-content {
             position: relative;
             z-index: 2;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(255, 255, 255, 0.75);
+            background: rgba(255, 255, 255, 0.85);
             width: 130px;
             height: 130px;
             border-radius: 50%;
         }
 
         .instruction {
-            font-size: 0.95rem;
+            font-size: 1.1rem;
             font-weight: 700;
-            margin-bottom: 2px;
             color: var(--primary-color);
-        }
-
-        .counter {
-            font-size: 1.8rem;
-            font-weight: bold;
+            text-align: center;
         }
 
         .timer-info {
@@ -154,7 +151,7 @@
         <p class="subtitle">Sigue el ritmo de la armonía interior</p>
 
         <div class="box-container">
-            <!-- GIF ubicado en la carpeta Imagenes -->
+            <!-- GIF ubicado en la carpeta Imagenes con escala dinámica -->
             <img src="Imagenes/GIF1.gif" alt="Meditación" class="center-graphic" id="meditationGif">
             
             <svg class="box-svg" viewBox="0 0 220 220">
@@ -164,7 +161,6 @@
 
             <div class="box-content">
                 <div class="instruction" id="instructionText">Listo</div>
-                <div class="counter" id="counterText">--</div>
             </div>
         </div>
 
@@ -197,11 +193,11 @@
         let animationFrameId = null;
 
         const instructionText = document.getElementById('instructionText');
-        const counterText = document.getElementById('counterText');
         const cycleText = document.getElementById('cycleText');
         const startBtn = document.getElementById('startBtn');
         const skipBtn = document.getElementById('skipBtn');
         const boxProgress = document.getElementById('boxProgress');
+        const meditationGif = document.getElementById('meditationGif');
 
         // Perímetro total del rectángulo SVG (190 * 4 = 760)
         const TOTAL_PERIMETER = 760;
@@ -220,7 +216,7 @@
             if (!isRunning) return;
             
             instructionText.textContent = text;
-            counterText.textContent = "--";
+            meditationGif.style.transform = 'scale(1)';
             currentVoiceAudio = audioObj;
             currentVoiceAudio.currentTime = 0;
             
@@ -286,7 +282,7 @@
             boxProgress.style.transition = 'none';
             boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
             instructionText.textContent = 'Listo';
-            counterText.textContent = '--';
+            meditationGif.style.transform = 'scale(1)';
             cycleText.textContent = 'Ciclo: 0 / 4';
             startBtn.textContent = 'Iniciar Respiración';
             startBtn.style.backgroundColor = 'var(--primary-color)';
@@ -300,7 +296,6 @@
                 cycleText.textContent = `Ciclo: 4 / 4`;
                 playVoiceSequence(voiceAudios.outro, "Completado", () => {
                     instructionText.textContent = '¡Paz!';
-                    counterText.textContent = '✨';
                     stopExercise();
                 });
                 return;
@@ -312,18 +307,17 @@
             currentVoiceAudio.currentTime = 0;
 
             instructionText.textContent = `Ciclo ${cycleNum}`;
-            counterText.textContent = "...";
 
             cycleAudio.play().catch(err => console.warn("Error ciclo audio:", err));
 
-            // Sincronización milimétrica segundo a segundo impulsada por el audio de voz real
+            // Sincronización milimétrica segundo a segundo guiada por el audio real del ciclo
             function syncWithAudio() {
                 if (!isRunning) return;
 
                 const t = cycleAudio.currentTime;
                 const duration = cycleAudio.duration || 16;
                 
-                // Margen de intro en el audio del ciclo (ej. primeros 3.5s para decir "Ciclo X")
+                // Tiempo de intro antes de que empiece la primera instrucción del ciclo (aprox. 3.5s)
                 const introOffset = 3.5; 
                 const phaseTime = Math.max(1, (duration - introOffset) / 4); // Duración exacta de cada una de las 4 fases
 
@@ -333,27 +327,27 @@
                     const phaseElapsed = elapsedInPhases % phaseTime;
                     const phaseProgress = Math.min(1, phaseElapsed / phaseTime); // 0.0 a 1.0
 
-                    // Conteo dinámico de 1 a 4 dentro de la fase
-                    const currentCount = Math.min(4, Math.floor(phaseProgress * 4) + 1);
-                    counterText.textContent = currentCount;
-
                     let targetOffset = TOTAL_PERIMETER;
 
                     if (currentPhaseIndex === 0) {
-                        // Fase 1: Inhalar (Lado superior: 760 -> 570)
+                        // Fase 1: INHALAR (Lado superior: 760 -> 570)
                         instructionText.textContent = "Inhala";
+                        meditationGif.style.transform = `scale(${1 + (phaseProgress * 0.15)})`; // Se expande suavemente
                         targetOffset = TOTAL_PERIMETER - (phaseProgress * 190);
                     } else if (currentPhaseIndex === 1) {
-                        // Fase 2: Sostener (Lado derecho: 570 -> 380)
+                        // Fase 2: SOSTENER (Lado derecho: 570 -> 380)
                         instructionText.textContent = "Sostén";
+                        meditationGif.style.transform = 'scale(1.15)'; // Mantiene expansión
                         targetOffset = 570 - (phaseProgress * 190);
                     } else if (currentPhaseIndex === 2) {
-                        // Fase 3: Exhalar (Lado inferior: 380 -> 190)
+                        // Fase 3: EXHALAR (Lado inferior: 380 -> 190)
                         instructionText.textContent = "Exhala";
+                        meditationGif.style.transform = `scale(${1.15 - (phaseProgress * 0.15)})`; // Se contrae suavemente
                         targetOffset = 380 - (phaseProgress * 190);
                     } else if (currentPhaseIndex === 3) {
-                        // Fase 4: Vacío (Lado izquierdo: 190 -> 0)
+                        // Fase 4: VACÍO (Lado izquierdo: 190 -> 0)
                         instructionText.textContent = "Vacío";
+                        meditationGif.style.transform = 'scale(1)'; // Vuelve al tamaño base
                         targetOffset = 190 - (phaseProgress * 190);
                     }
 
