@@ -76,7 +76,7 @@
             stroke-width: 6;
         }
 
-        /* Cuadrado Grande: Cada lado es una Fase (Inhalar, Sostener, Exhalar, Vacío) */
+        /* Cuadrado Grande: 1 lado por Fase */
         .box-large-progress {
             fill: none;
             stroke: var(--primary-color);
@@ -87,14 +87,14 @@
             transition: stroke 0.3s ease;
         }
 
-        /* Cuadrado Pequeño Interior: Cada lado es 1 segundo (da 4 vueltas completas por fase) */
+        /* Cuadrado Pequeño Interior: Recorre sus 4 lados suavemente durante la fase */
         .box-small-progress {
             fill: none;
             stroke: #ffffff;
             stroke-width: 4;
             stroke-dasharray: 400;
             stroke-dashoffset: 400;
-            opacity: 0.8;
+            opacity: 0.85;
         }
 
         .breathing-circle {
@@ -187,11 +187,11 @@
 
         <div class="box-wrapper">
             <svg class="box-svg" viewBox="0 0 240 240">
-                <!-- Cuadrado Grande (Fases: 1 lado por fase) -->
+                <!-- Cuadrado Grande (Fases) -->
                 <rect class="box-bg" x="20" y="20" width="200" height="200" rx="8" />
                 <rect class="box-large-progress" id="largeProgress" x="20" y="20" width="200" height="200" rx="8" />
                 
-                <!-- Cuadrado Pequeño Interior (Segundos: 1 lado por segundo, 4 vueltas por fase) -->
+                <!-- Cuadrado Pequeño Interior (Progreso suave por fase) -->
                 <rect class="box-bg" x="70" y="70" width="100" height="100" rx="4" />
                 <rect class="box-small-progress" id="smallProgress" x="70" y="70" width="100" height="100" rx="4" />
             </svg>
@@ -218,6 +218,9 @@
     <audio id="audio7" src="Audios/Audio7.mp3" preload="auto"></audio>
     <audio id="audio8" src="Audios/Audio8.mp3" preload="auto"></audio>
 
+    <!-- Música de fondo instrumental relajante de alta calidad (bucle continuo) -->
+    <audio id="bgAudio" src="https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3" preload="auto" loop></audio>
+
     <script>
         let isRunning = false;
         let currentCycle = 0;
@@ -227,11 +230,6 @@
         let audioEnabled = true;
         let isDuringIntro = false;
 
-        // Web Audio API para música ambiental sintética interna (sin archivos externos bloqueados)
-        let audioCtx = null;
-        let ambientNode = null;
-        let ambientGain = null;
-
         const circle = document.getElementById('circle');
         const instructionText = document.getElementById('instructionText');
         const cycleText = document.getElementById('cycleText');
@@ -240,6 +238,10 @@
         const largeProgress = document.getElementById('largeProgress');
         const smallProgress = document.getElementById('smallProgress');
         const audioBtn = document.getElementById('audioBtn');
+        const bgAudio = document.getElementById('bgAudio');
+
+        // Volumen de música ambiental suave para no competir con tu voz (12%)
+        bgAudio.volume = 0.12;
 
         const audios = {
             1: document.getElementById('audio1'),
@@ -252,49 +254,8 @@
             8: document.getElementById('audio8')
         };
 
-        const LARGE_PERIMETER = 800; // 4 lados de 200px
-        const SMALL_PERIMETER = 400; // 4 lados de 100px
-
-        function initAmbientMusic() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            if (!ambientNode && audioEnabled) {
-                try {
-                    // Creamos un acorde ambiental relajante mediante osciladores armónicos
-                    ambientNode = audioCtx.createOscillator();
-                    let osc2 = audioCtx.createOscillator();
-                    ambientGain = audioCtx.createGain();
-
-                    ambientNode.type = 'sine';
-                    ambientNode.frequency.setValueAtTime(130.81, audioCtx.currentTime); // Nota Do (C3)
-                    osc2.type = 'triangle';
-                    osc2.frequency.setValueAtTime(196.00, audioCtx.currentTime); // Nota Sol (G3)
-
-                    ambientGain.gain.setValueAtTime(0.02, audioCtx.currentTime); // Volumen sutilísimo para no opacar la voz
-
-                    ambientNode.connect(ambientGain);
-                    osc2.connect(ambientGain);
-                    ambientGain.connect(audioCtx.destination);
-
-                    ambientNode.start();
-                    osc2.start();
-                } catch(e) { console.log(e); }
-            } else if (ambientGain && audioEnabled) {
-                ambientGain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-            }
-        }
-
-        function stopAmbientMusic() {
-            if (ambientGain && audioCtx) {
-                try {
-                    ambientGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-                } catch(e) {}
-            }
-        }
+        const LARGE_PERIMETER = 800;
+        const SMALL_PERIMETER = 400;
 
         function playAudioDynamic(audioElem) {
             return new Promise((resolve) => {
@@ -320,18 +281,15 @@
                     a.currentTime = 0;
                 }
             });
-            stopAmbientMusic();
+            bgAudio.pause();
+            bgAudio.currentTime = 0;
         }
 
         function toggleAudio() {
             audioEnabled = !audioEnabled;
             audioBtn.textContent = audioEnabled ? "🔊 Sonido: Activado" : "🔇 Sonido: Silenciado";
             Object.values(audios).forEach(a => { if (a) a.muted = !audioEnabled; });
-            if (!audioEnabled) {
-                stopAmbientMusic();
-            } else if (isRunning) {
-                initAmbientMusic();
-            }
+            bgAudio.muted = !audioEnabled;
         }
 
         async function toggleExercise() {
@@ -351,7 +309,8 @@
             isDuringIntro = true;
 
             if (audioEnabled) {
-                initAmbientMusic();
+                bgAudio.currentTime = 0;
+                bgAudio.play().catch(e => console.log(e));
             }
 
             instructionText.textContent = "Preparación...";
@@ -436,7 +395,7 @@
         function runSyncedPhases(totalAudioDurationMs) {
             return new Promise((resolve) => {
                 let startTime = Date.now();
-                let phaseTimeMs = totalAudioDurationMs / 4; // Duración exacta de 1 fase (aprox 4s)
+                let phaseTimeMs = totalAudioDurationMs / 4; 
 
                 clearInterval(animationInterval);
 
@@ -454,36 +413,37 @@
                     let phaseElapsed = elapsed - (currentPhaseIndex * phaseTimeMs);
                     let phaseProgress = Math.min(phaseElapsed / phaseTimeMs, 1);
                     
-                    // Conteo de segundos (1 a 4) dentro de la fase actual
                     let currentSecond = Math.min(Math.floor(phaseElapsed / (phaseTimeMs / 4)) + 1, 4);
                     circle.textContent = currentSecond;
 
-                    // CUADRADO GRANDE: 1 lado por cada fase (4 fases en total)
+                    // CUADRADO GRANDE: 1 lado por fase
                     let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
                     let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
                     largeProgress.style.strokeDashoffset = largeTargetOffset;
 
-                    // CUADRADO PEQUEÑO INTERIOR: Cada lado es 1 segundo (da 1 vuelta completa de 4 lados por fase)
-                    let secondProgress = (phaseElapsed % (phaseTimeMs / 4)) / (phaseTimeMs / 4);
-                    let smallOffset = SMALL_PERIMETER - (SMALL_PERIMETER * secondProgress);
+                    // CUADRADO PEQUEÑO INTERIOR: Da 1 vuelta completa fluida y suave durante toda la fase actual
+                    let smallOffset = SMALL_PERIMETER - (SMALL_PERIMETER * phaseProgress);
                     smallProgress.style.strokeDashoffset = smallOffset;
 
-                    // Textos y colores según la fase
                     if (currentPhaseIndex === 0) {
                         instructionText.textContent = "1. INHALA por la nariz";
                         largeProgress.style.stroke = "var(--accent-inhale)";
+                        smallProgress.style.stroke = "var(--accent-inhale)";
                         circle.style.backgroundColor = "var(--accent-inhale)";
                     } else if (currentPhaseIndex === 1) {
                         instructionText.textContent = "2. SOSTÉN EL AIRE";
                         largeProgress.style.stroke = "var(--accent-hold1)";
+                        smallProgress.style.stroke = "var(--accent-hold1)";
                         circle.style.backgroundColor = "var(--accent-hold1)";
                     } else if (currentPhaseIndex === 2) {
                         instructionText.textContent = "3. EXHALA despacio";
                         largeProgress.style.stroke = "var(--accent-exhale)";
+                        smallProgress.style.stroke = "var(--accent-exhale)";
                         circle.style.backgroundColor = "var(--accent-exhale)";
                     } else if (currentPhaseIndex === 3) {
                         instructionText.textContent = "4. SOSTÉN EN VACÍO";
                         largeProgress.style.stroke = "var(--accent-hold2)";
+                        smallProgress.style.stroke = "var(--accent-hold2)";
                         circle.style.backgroundColor = "var(--accent-hold2)";
                     }
 
