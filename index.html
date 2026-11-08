@@ -240,22 +240,20 @@
         const LARGE_PERIMETER = 800;
         const SMALL_PERIMETER = 400;
 
-        // ==========================================
-        // CONFIGURACIÓN MAESTRA DE TIEMPOS (MAPA DE AUDIOS)
-        // ==========================================
-        // Aquí defines claramente para cada ciclo (Audio 4, 5, 6, 7):
-        // - introFin: Segundo exacto en que termina "Iniciamos..." y empieza "Inhala..."
-        // Puedes afinar estos números fácilmente si algún audio necesita más o menos milisegundos.
+        // =========================================================================
+        // CONFIGURACIÓN MAESTRA DE TIEMPOS POR CICLO
+        // =========================================================================
+        // 'introFin': Segundo exacto en que la voz termina la introducción ("Ciclo X..." / "Iniciamos...") 
+        // y comienza la acción de respiración ("Inhala..."). Durante este lapso los cuadrados estarán quietos.
         const AUDIO_CONFIG = {
-            4: { introFin: 2.5 }, // Ciclo 1 (Audio4.mp3)
-            5: { introFin: 2.5 }, // Ciclo 2 (Audio5.mp3)
-            6: { introFin: 2.5 }, // Ciclo 3 (Audio6.mp3)
-            7: { introFin: 2.5 }  // Ciclo 4 (Audio7.mp3)
+            4: { introFin: 3.5 }, // Ciclo 1 (Audio4.mp3)
+            5: { introFin: 3.0 }, // Ciclo 2 (Audio5.mp3)
+            6: { introFin: 3.0 }, // Ciclo 3 (Audio6.mp3)
+            7: { introFin: 3.0 }  // Ciclo 4 (Audio7.mp3)
         };
 
-        // Segundo exacto en el que deseas que comience a reproducirse la música de fondo (Audio9.mp3)
-        // para saltarte cualquier silencio inicial y que empiece a sonar inmediatamente.
-        const BACKGROUND_START_SECOND = 1.0; 
+        // Segundo exacto en el que deseas que la música de fondo empiece a sonar al dar clic en Iniciar
+        const BACKGROUND_START_SECOND = 1.5; 
 
         function playAudioDynamic(audioElem) {
             return new Promise((resolve) => {
@@ -304,7 +302,7 @@
             skipBtn.style.display = 'block';
             isDuringIntro = true;
 
-            // Iniciar la música de fondo directamente en el segundo configurado (evita silencios)
+            // Iniciar la música de fondo en el segundo exacto configurado para evitar espacios mudos
             try {
                 bgAudio.currentTime = BACKGROUND_START_SECOND;
                 await bgAudio.play();
@@ -383,8 +381,7 @@
             circle.textContent = '--';
             instructionText.textContent = "Escucha la guía...";
 
-            // Consultar el tiempo exacto en nuestra tabla maestra
-            let config = AUDIO_CONFIG[audioIndex] || { introFin: 2.5 };
+            let config = AUDIO_CONFIG[audioIndex] || { introFin: 3.0 };
             let introOffset = config.introFin;
 
             cycleAudio.currentTime = 0;
@@ -402,7 +399,7 @@
 
                     let elapsed = (timestamp - startTime) / 1000;
 
-                    // Bloqueo estricto: Mantener quieto durante la intro registrada en el mapa maestro
+                    // CONGELACIÓN ABSOLUTA: Durante la introducción los cuadrados no se mueven
                     if (elapsed < introOffset) {
                         largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
                         smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
@@ -411,7 +408,7 @@
                         return;
                     }
 
-                    // A partir de este momento exacto arranca el movimiento sincronizado
+                    // A partir de este momento exacto arranca el movimiento sincronizado con la voz
                     let activeTime = elapsed - introOffset;
                     let currentPhaseIndex = Math.floor(activeTime / phaseDuration);
 
@@ -436,7 +433,7 @@
                     let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
                     smallProgress.style.strokeDashoffset = smallOffset;
 
-                    // Actualización visual de colores y textos
+                    // Textos y colores sincronizados según la fase de la respiración
                     if (currentPhaseIndex === 0) {
                         instructionText.textContent = "1. INHALA por la nariz";
                         largeProgress.style.stroke = varColor('--accent-inhale');
