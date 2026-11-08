@@ -3,470 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Respiración Cuadrática - Meditación Guiada</title>
+    <title>Prueba de Sonido - Respiración</title>
     <style>
-        :root {
-            --bg-color: #f4f0ea;
-            --card-bg: #ffffff;
-            --primary-color: #8b7bb0;
-            --accent-inhale: #71b280;
-            --accent-hold1: #8b7bb0;
-            --accent-exhale: #e08a68;
-            --accent-hold2: #5c9ead;
-            --text-color: #2c2c2c;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: Arial, sans-serif;
+            background-color: #f4f0ea;
+            color: #2c2c2c;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             min-height: 100vh;
             margin: 0;
             padding: 20px;
-            box-sizing: border-box;
         }
-
         .container {
-            background-color: var(--card-bg);
-            border-radius: 24px;
+            background-color: #ffffff;
             padding: 30px;
-            max-width: 420px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 500px;
             width: 100%;
             text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
         }
-
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 5px;
-            color: var(--primary-color);
-        }
-
-        p.subtitle {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 0;
-            margin-bottom: 20px;
-        }
-
-        .box-wrapper {
-            position: relative;
-            width: 240px;
-            height: 240px;
-            margin: 20px auto;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .box-svg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        .box-bg {
-            fill: none;
-            stroke: #e6e0d8;
-            stroke-width: 6;
-        }
-
-        .box-large-progress {
-            fill: none;
-            stroke: var(--primary-color);
-            stroke-width: 8;
-            stroke-linecap: round;
-            stroke-dasharray: 800;
-            stroke-dashoffset: 800;
-            transition: stroke 0.3s ease;
-        }
-
-        .box-small-progress {
-            fill: none;
-            stroke: #ffffff;
-            stroke-width: 4;
-            stroke-dasharray: 400;
-            stroke-dashoffset: 400;
-            opacity: 0.95;
-        }
-
-        .breathing-circle {
-            width: 70px;
-            height: 70px;
-            background-color: var(--primary-color);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        button {
+            background-color: #8b7bb0;
             color: white;
-            font-weight: bold;
-            font-size: 1.8rem;
-            box-shadow: 0 0 15px rgba(0,0,0,0.08);
-            transform: scale(1);
-            transition: background-color 0.4s ease;
-            z-index: 2;
-        }
-
-        .instruction {
+            border: none;
+            padding: 15px 30px;
             font-size: 1.1rem;
-            font-weight: 600;
-            min-height: 40px;
-            margin: 15px 0 5px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .timer-info {
-            font-size: 0.9rem;
-            color: #777;
-            margin-bottom: 20px;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            flex-direction: column;
-        }
-
-        .btn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            border-radius: 30px;
-            font-size: 1rem;
             font-weight: bold;
+            border-radius: 30px;
             cursor: pointer;
+            margin: 10px 0;
             width: 100%;
-            transition: background-color 0.2s ease;
         }
-
-        .btn-skip {
-            background-color: #d1cbe1;
-            color: #4a3f6b;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 20px;
+        button:hover {
+            background-color: #726298;
+        }
+        .audio-item {
+            margin: 10px 0;
+            text-align: left;
             font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            display: none;
-            transition: background-color 0.2s ease;
         }
-
-        .btn-skip:hover {
-            background-color: #bfaedc;
+        audio {
+            width: 100%;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>RESPIRACIÓN CUADRÁTICA</h1>
-        <p class="subtitle">Encuentra tu centro y calma tu mente</p>
+        <h1>Panel de Diagnóstico de Sonido</h1>
+        <p>Si los audios funcionan aquí, el problema de reproducción estará completamente resuelto.</p>
 
-        <div class="box-wrapper">
-            <svg class="box-svg" viewBox="0 0 240 240">
-                <rect class="box-bg" x="20" y="20" width="200" height="200" rx="8" />
-                <rect class="box-large-progress" id="largeProgress" x="20" y="20" width="200" height="200" rx="8" />
-                <rect class="box-bg" x="70" y="70" width="100" height="100" rx="4" />
-                <rect class="box-small-progress" id="smallProgress" x="70" y="70" width="100" height="100" rx="4" />
-            </svg>
-            <div class="breathing-circle" id="circle">--</div>
+        <button onclick="probarSecuencia()">▶️ Probar Reproducción Secuencial</button>
+        <button onclick="detenerTodo()" style="background-color: #d9534f;">⏹️ Detener Todo</button>
+
+        <p id="estado" style="font-weight: bold; color: #5c9ead; margin: 15px 0;">Estado: En espera</p>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
+
+        <h3>Controles individuales (para verificar archivos):</h3>
+        
+        <div class="audio-item">
+            <label>Fondo (Audio9_2.mp3):</label>
+            <audio id="bgAudio" src="Audios/Audio9_2.mp3" controls loop></audio>
         </div>
 
-        <div class="instruction" id="instructionText">Haz clic en Iniciar</div>
-        <div class="timer-info" id="cycleText">Ciclo: 0 / 4</div>
+        <div class="audio-item">
+            <label>Audio 1_2:</label>
+            <audio src="Audios/Audio1_2.mp3" controls></audio>
+        </div>
 
-        <div class="controls">
-            <button class="btn" id="startBtn" onclick="toggleExercise()">Iniciar Respiración</button>
-            <button class="btn-skip" id="skipBtn" onclick="skipIntro()">⏭️ Saltar Introducción</button>
+        <div class="audio-item">
+            <label>Audio 4_2 (Primer Ciclo):</label>
+            <audio src="Audios/Audio4_2.mp3" controls></audio>
         </div>
     </div>
 
-    <!-- Archivos de Audio Locutados y Música de Fondo -->
-    <audio id="audio1" src="Audios/Audio1_2.mp3" preload="auto"></audio>
-    <audio id="audio2" src="Audios/Audio2_2.mp3" preload="auto"></audio>
-    <audio id="audio3" src="Audios/Audio3_2.mp3" preload="auto"></audio>
-    <audio id="audio4" src="Audios/Audio4_2.mp3" preload="auto"></audio>
-    <audio id="audio5" src="Audios/Audio5_2.mp3" preload="auto"></audio>
-    <audio id="audio6" src="Audios/Audio6_2.mp3" preload="auto"></audio>
-    <audio id="audio7" src="Audios/Audio7_2.mp3" preload="auto"></audio>
-    <audio id="audio8" src="Audios/Audio8_2.mp3" preload="auto"></audio>
-    <audio id="bgAudio" src="Audios/Audio9_2.mp3" preload="auto" loop></audio>
-
     <script>
-        let isRunning = false;
-        let currentCycle = 0;
-        const maxCycles = 4;
-        let isDuringIntro = false;
-        let animationFrameId = null;
-
-        const circle = document.getElementById('circle');
-        const instructionText = document.getElementById('instructionText');
-        const cycleText = document.getElementById('cycleText');
-        const startBtn = document.getElementById('startBtn');
-        const skipBtn = document.getElementById('skipBtn');
-        const largeProgress = document.getElementById('largeProgress');
-        const smallProgress = document.getElementById('smallProgress');
         const bgAudio = document.getElementById('bgAudio');
-
         bgAudio.volume = 0.12;
 
-        const audios = {
-            1: document.getElementById('audio1'),
-            2: document.getElementById('audio2'),
-            3: document.getElementById('audio3'),
-            4: document.getElementById('audio4'),
-            5: document.getElementById('audio5'),
-            6: document.getElementById('audio6'),
-            7: document.getElementById('audio7'),
-            8: document.getElementById('audio8')
-        };
+        const audiosSecuencia = [
+            document.getElementById('audio1') || new Audio('Audios/Audio1_2.mp3'),
+            document.getElementById('audio2') || new Audio('Audios/Audio2_2.mp3'),
+            document.getElementById('audio3') || new Audio('Audios/Audio3_2.mp3'),
+            document.getElementById('audio4') || new Audio('Audios/Audio4_2.mp3')
+        ];
 
-        const LARGE_PERIMETER = 800;
-        const SMALL_PERIMETER = 400;
+        let indexActual = 0;
+        let reproduciendo = false;
 
-        const AUDIO_CONFIG = {
-            4: { introFin: 3.5 },
-            5: { introFin: 3.0 },
-            6: { introFin: 3.0 },
-            7: { introFin: 3.0 }
-        };
+        async function probarSecuencia() {
+            if (reproduciendo) return;
+            reproduciendo = true;
+            
+            document.getElementById('estado').textContent = "Estado: Iniciando música de fondo...";
+            
+            try {
+                // Iniciar fondo saltando el silencio inicial (ej. segundo 4)
+                bgAudio.currentTime = 4.0;
+                await bgAudio.play();
+            } catch (e) {
+                console.log("Error en fondo:", e);
+            }
 
-        const BACKGROUND_START_SECOND = 4.0;
-
-        function playAudioSafe(audioElem) {
-            return new Promise((resolve) => {
-                if (!audioElem) {
-                    resolve();
-                    return;
-                }
-                audioElem.currentTime = 0;
-                audioElem.play().then(() => {
-                    audioElem.onended = () => resolve();
-                }).catch(err => {
-                    console.error("Error de reproducción:", err);
-                    resolve();
-                });
-            });
+            reproducirSiguienteAudio();
         }
 
-        function stopAllAudios() {
-            Object.values(audios).forEach(a => {
-                if (a) {
-                    a.pause();
-                    a.currentTime = 0;
-                    a.onended = null;
-                }
-            });
+        function reproducirSiguienteAudio() {
+            if (!reproduciendo) return;
+
+            if (indexActual < audiosSecuencia.length) {
+                let audio = audiosSecuencia[indexActual];
+                document.getElementById('estado').textContent = `Estado: Reproduciendo Audio ${indexActual + 1}_2.mp3`;
+                
+                audio.currentTime = 0;
+                audio.play().then(() => {
+                    audio.onended = () => {
+                        indexActual++;
+                        reproducirSiguienteAudio();
+                    };
+                }).catch(err => {
+                    document.getElementById('estado').textContent = `Error en Audio ${indexActual + 1}: Revisa la ruta`;
+                    console.error(err);
+                });
+            } else {
+                document.getElementById('estado').textContent = "Estado: Secuencia de prueba finalizada con éxito.";
+                reproduciendo = false;
+            }
+        }
+
+        function detenerTodo() {
+            reproduciendo = false;
             bgAudio.pause();
             bgAudio.currentTime = 0;
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-            }
-        }
-
-        function toggleExercise() {
-            if (isRunning) {
-                stopExercise();
-            } else {
-                startExercise();
-            }
-        }
-
-        async function startExercise() {
-            if (isRunning) return;
-            isRunning = true;
-            startBtn.textContent = 'Detener';
-            startBtn.style.backgroundColor = '#d9534f';
-            skipBtn.style.display = 'block';
-            isDuringIntro = true;
-
-            // Iniciar música de fondo de inmediato saltando el silencio inicial
-            try {
-                bgAudio.currentTime = BACKGROUND_START_SECOND;
-                bgAudio.play().catch(e => console.log("Fondo bloqueado:", e));
-            } catch(err) {
-                console.log(err);
-            }
-
-            instructionText.textContent = "Preparación...";
-            await playAudioSafe(audios[1]);
-            if (!isRunning || !isDuringIntro) return;
-
-            await playAudioSafe(audios[2]);
-            if (!isRunning || !isDuringIntro) return;
-
-            instructionText.textContent = "Toma aire profundo...";
-            await playAudioSafe(audios[3]);
-            if (!isRunning || !isDuringIntro) return;
-
-            skipBtn.style.display = 'none';
-            isDuringIntro = false;
-
-            currentCycle = 0;
-            runNextCycle();
-        }
-
-        function skipIntro() {
-            if (!isDuringIntro) return;
-            Object.values(audios).forEach(a => { if(a) { a.pause(); a.currentTime = 0; } });
-            
-            isDuringIntro = false;
-            skipBtn.style.display = 'none';
-
-            currentCycle = 0;
-            runNextCycle();
-        }
-
-        function stopExercise() {
-            isRunning = false;
-            isDuringIntro = false;
-            skipBtn.style.display = 'none';
-            stopAllAudios();
-
-            circle.style.transform = 'scale(1)';
-            circle.style.backgroundColor = 'var(--primary-color)';
-            circle.textContent = '--';
-            instructionText.textContent = 'Haz clic en Iniciar';
-            cycleText.textContent = 'Ciclo: 0 / 4';
-            largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
-            smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
-            startBtn.textContent = 'Iniciar Respiración';
-            startBtn.style.backgroundColor = 'var(--primary-color)';
-        }
-
-        function runNextCycle() {
-            if (!isRunning) return;
-
-            currentCycle++;
-            if (currentCycle > maxCycles) {
-                finishSession();
-                return;
-            }
-
-            cycleText.textContent = `Ciclo: ${currentCycle} / ${maxCycles}`;
-
-            let audioIndex = currentCycle + 3;
-            let cycleAudio = audios[audioIndex];
-
-            if (!cycleAudio) return;
-
-            largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
-            smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
-            circle.textContent = '--';
-            instructionText.textContent = "Escucha la guía...";
-
-            let config = AUDIO_CONFIG[audioIndex] || { introFin: 3.0 };
-            let introOffset = config.introFin;
-
-            cycleAudio.currentTime = 0;
-            cycleAudio.play().then(() => {
-                let totalDuration = cycleAudio.duration || 19;
-                let activeDuration = totalDuration - introOffset;
-                if (activeDuration < 10) activeDuration = 16; 
-
-                let phaseDuration = activeDuration / 4; 
-                let startTime = null;
-
-                function animateCycle(timestamp) {
-                    if (!isRunning) return;
-                    if (!startTime) startTime = timestamp;
-
-                    let elapsed = (timestamp - startTime) / 1000;
-
-                    // Congelado estricto durante la intro de "Iniciamos..."
-                    if (elapsed < introOffset) {
-                        largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
-                        smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
-                        circle.textContent = '--';
-                        animationFrameId = requestAnimationFrame(animateCycle);
-                        return;
-                    }
-
-                    let activeTime = elapsed - introOffset;
-                    let currentPhaseIndex = Math.floor(activeTime / phaseDuration);
-
-                    if (currentPhaseIndex > 3) {
-                        currentPhaseIndex = 3;
-                    }
-
-                    let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
-                    let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
-
-                    // Cuadrado Grande: Se mueve por fase completa
-                    let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
-                    let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
-                    largeProgress.style.strokeDashoffset = largeTargetOffset;
-
-                    // Cuadrado Pequeño: Se mueve EXCLUSIVAMENTE al ritmo del conteo (1, 2, 3, 4)
-                    let secondDuration = phaseDuration / 4;
-                    let currentSecond = Math.min(Math.floor(phaseElapsed / secondDuration) + 1, 4);
-                    circle.textContent = currentSecond;
-
-                    let secondProgress = (phaseElapsed % secondDuration) / secondDuration;
-                    let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
-                    smallProgress.style.strokeDashoffset = smallOffset;
-
-                    if (currentPhaseIndex === 0) {
-                        instructionText.textContent = "1. INHALA por la nariz";
-                        largeProgress.style.stroke = varColor('--accent-inhale');
-                        smallProgress.style.stroke = "#ffffff";
-                        circle.style.backgroundColor = varColor('--accent-inhale');
-                    } else if (currentPhaseIndex === 1) {
-                        instructionText.textContent = "2. SOSTÉN EL AIRE";
-                        largeProgress.style.stroke = varColor('--accent-hold1');
-                        smallProgress.style.stroke = "#ffffff";
-                        circle.style.backgroundColor = varColor('--accent-hold1');
-                    } else if (currentPhaseIndex === 2) {
-                        instructionText.textContent = "3. EXHALA despacio";
-                        largeProgress.style.stroke = varColor('--accent-exhale');
-                        smallProgress.style.stroke = "#ffffff";
-                        circle.style.backgroundColor = varColor('--accent-exhale');
-                    } else if (currentPhaseIndex === 3) {
-                        instructionText.textContent = "4. SOSTÉN EN VACÍO";
-                        largeProgress.style.stroke = varColor('--accent-hold2');
-                        smallProgress.style.stroke = "#ffffff";
-                        circle.style.backgroundColor = varColor('--accent-hold2');
-                    }
-
-                    if (activeTime < activeDuration) {
-                        animationFrameId = requestAnimationFrame(animateCycle);
-                    }
-                }
-
-                animationFrameId = requestAnimationFrame(animateCycle);
-
-            }).catch(e => console.log("Audio play error:", e));
-
-            cycleAudio.onended = () => {
-                if (animationFrameId) cancelAnimationFrame(animationFrameId);
-                if (isRunning) {
-                    runNextCycle();
-                }
-            };
-        }
-
-        function varColor(name) {
-            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-        }
-
-        async function finishSession() {
-            instructionText.textContent = 'Regresando a tu ritmo natural...';
-            cycleText.textContent = 'Completado';
-            
-            await playAudioSafe(audios[8]);
-            
-            instructionText.textContent = '¡Excelente trabajo!';
-            stopExercise();
+            audiosSecuencia.forEach(a => {
+                a.pause();
+                a.currentTime = 0;
+                a.onended = null;
+            });
+            indexActual = 0;
+            document.getElementById('estado').textContent = "Estado: Detenido manualmente.";
         }
     </script>
 </body>
