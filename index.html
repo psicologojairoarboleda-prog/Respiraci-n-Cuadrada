@@ -76,7 +76,7 @@
             stroke-width: 6;
         }
 
-        /* Cuadrado Grande: 1 lado por Fase */
+        /* Cuadrado Grande: 1 lado por cada fase */
         .box-large-progress {
             fill: none;
             stroke: var(--primary-color);
@@ -87,7 +87,7 @@
             transition: stroke 0.3s ease;
         }
 
-        /* Cuadrado Pequeño: 1 lado por Segundo (1, 2, 3, 4) */
+        /* Cuadrado Pequeño: 1 lado por cada segundo (1, 2, 3, 4) */
         .box-small-progress {
             fill: none;
             stroke: #ffffff;
@@ -176,11 +176,11 @@
 
         <div class="box-wrapper">
             <svg class="box-svg" viewBox="0 0 240 240">
-                <!-- Cuadrado Grande: 1 lado por Fase -->
+                <!-- Cuadrado Grande -->
                 <rect class="box-bg" x="20" y="20" width="200" height="200" rx="8" />
                 <rect class="box-large-progress" id="largeProgress" x="20" y="20" width="200" height="200" rx="8" />
                 
-                <!-- Cuadrado Pequeño: 1 lado por Segundo (1, 2, 3, 4) -->
+                <!-- Cuadrado Pequeño -->
                 <rect class="box-bg" x="70" y="70" width="100" height="100" rx="4" />
                 <rect class="box-small-progress" id="smallProgress" x="70" y="70" width="100" height="100" rx="4" />
             </svg>
@@ -196,7 +196,7 @@
         </div>
     </div>
 
-    <!-- Audios Locutados (del 1 al 8) -->
+    <!-- Audios Locutados y Música de Fondo Local -->
     <audio id="audio1" src="Audios/Audio1.mp3" preload="auto"></audio>
     <audio id="audio2" src="Audios/Audio2.mp3" preload="auto"></audio>
     <audio id="audio3" src="Audios/Audio3.mp3" preload="auto"></audio>
@@ -205,16 +205,14 @@
     <audio id="audio6" src="Audios/Audio6.mp3" preload="auto"></audio>
     <audio id="audio7" src="Audios/Audio7.mp3" preload="auto"></audio>
     <audio id="audio8" src="Audios/Audio8.mp3" preload="auto"></audio>
-
-    <!-- Música de fondo de piano suave y relajante (en bucle continuo automático) -->
-    <audio id="bgAudio" src="https://cdn.pixabay.com/download/audio/2022/05/16/audio_db32f790c3.mp3" preload="auto" loop></audio>
+    <audio id="bgAudio" src="Audios/Audio9.mp3" preload="auto" loop></audio>
 
     <script>
         let isRunning = false;
         let currentCycle = 0;
         const maxCycles = 4;
-        
         let isDuringIntro = false;
+        let animationFrameId = null;
 
         const circle = document.getElementById('circle');
         const instructionText = document.getElementById('instructionText');
@@ -225,7 +223,7 @@
         const smallProgress = document.getElementById('smallProgress');
         const bgAudio = document.getElementById('bgAudio');
 
-        // Volumen de piano ambiental muy suave (12%)
+        // Volumen de la música ambiental (suave de fondo al 12%)
         bgAudio.volume = 0.12;
 
         const audios = {
@@ -242,9 +240,6 @@
         const LARGE_PERIMETER = 800;
         const SMALL_PERIMETER = 400;
 
-        // Tiempo exacto en segundos que dura la frase "Iniciamos..." antes de empezar la fase real de respiración
-        const VOICE_START_OFFSET = 2.2;
-
         function playAudioDynamic(audioElem) {
             return new Promise((resolve) => {
                 if (!audioElem) {
@@ -255,7 +250,7 @@
                 audioElem.play().then(() => {
                     audioElem.onended = () => resolve();
                 }).catch(err => {
-                    console.log("Audio blocked:", err);
+                    console.log("Audio play blocked:", err);
                     resolve();
                 });
             });
@@ -265,12 +260,15 @@
             Object.values(audios).forEach(a => {
                 if (a) {
                     a.pause();
-                    a.ontimeupdate = null;
                     a.currentTime = 0;
+                    a.onended = null;
                 }
             });
             bgAudio.pause();
             bgAudio.currentTime = 0;
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
         }
 
         async function toggleExercise() {
@@ -289,9 +287,9 @@
             skipBtn.style.display = 'block';
             isDuringIntro = true;
 
-            // Arranca el piano suave inmediatamente
+            // Iniciar música ambiental de fondo automática
             bgAudio.currentTime = 0;
-            bgAudio.play().catch(e => console.log("Bg audio blocked:", e));
+            bgAudio.play().catch(e => console.log("Bg audio play blocked:", e));
 
             instructionText.textContent = "Preparación...";
             await playAudioDynamic(audios[1]);
@@ -357,84 +355,106 @@
 
             if (!cycleAudio) return;
 
-            // Mantener cuadrados completamente quietos y en cero al inicio del audio
+            // Mantener ambos cuadrados completamente estáticos y en cero al inicio del audio
             largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
             smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
             circle.textContent = '--';
             instructionText.textContent = "Escucha la guía...";
 
             cycleAudio.currentTime = 0;
-            cycleAudio.play().catch(e => console.log(e));
+            cycleAudio.play().then(() => {
+                // Una vez que el audio arranca, leemos su duración total real de forma dinámica
+                let totalDuration = cycleAudio.duration;
+                // Estimamos que los primeros 2.2 segundos corresponden a la introducción hablada ("Iniciamos...")
+                let introOffset = 2.2; 
+                let activeDuration = totalDuration - introOffset;
+                if (activeDuration < 10) activeDuration = 14; // Resguardo por seguridad
 
-            cycleAudio.ontimeupdate = () => {
-                if (!isRunning) return;
+                let phaseDuration = activeDuration / 4; // Cada una de las 4 fases
+                let startTime = null;
 
-                let currentTime = cycleAudio.currentTime;
+                function animateCycle(timestamp) {
+                    if (!isRunning) return;
+                    if (!startTime) startTime = timestamp;
 
-                // MANTENER AMBOS CUADROS ABSOLUTAMENTE QUIETOS MIENTRAS SUENA "INICIAMOS..."
-                if (currentTime < VOICE_START_OFFSET) {
-                    largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
-                    smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
-                    circle.textContent = '--';
-                    return;
+                    let elapsed = (timestamp - startTime) / 1000;
+
+                    // MANTENER ESTÁTICO MIENTRAS SUENA LA INTRODUCCIÓN ("Iniciamos...")
+                    if (elapsed < introOffset) {
+                        largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
+                        smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
+                        circle.textContent = '--';
+                        animationFrameId = requestAnimationFrame(animateCycle);
+                        return;
+                    }
+
+                    // TIEMPO ACTIVO DE LAS 4 FASES DE RESPIRACIÓN
+                    let activeTime = elapsed - introOffset;
+                    let currentPhaseIndex = Math.floor(activeTime / phaseDuration);
+
+                    if (currentPhaseIndex > 3) {
+                        currentPhaseIndex = 3;
+                    }
+
+                    let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
+                    let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
+
+                    // CUADRADO GRANDE: Avanza un lado completo por fase exacta
+                    let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
+                    let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
+                    largeProgress.style.strokeDashoffset = largeTargetOffset;
+
+                    // CUADRADO PEQUEÑO: Dibuja un lado por cada segundo contado (1, 2, 3, 4)
+                    let secondDuration = phaseDuration / 4;
+                    let currentSecond = Math.min(Math.floor(phaseElapsed / secondDuration) + 1, 4);
+                    circle.textContent = currentSecond;
+
+                    let secondProgress = (phaseElapsed % secondDuration) / secondDuration;
+                    let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
+                    smallProgress.style.strokeDashoffset = smallOffset;
+
+                    // Actualizar textos y colores visuales según la fase activa
+                    if (currentPhaseIndex === 0) {
+                        instructionText.textContent = "1. INHALA por la nariz";
+                        largeProgress.style.stroke = varColor('--accent-inhale');
+                        smallProgress.style.stroke = "#ffffff";
+                        circle.style.backgroundColor = varColor('--accent-inhale');
+                    } else if (currentPhaseIndex === 1) {
+                        instructionText.textContent = "2. SOSTÉN EL AIRE";
+                        largeProgress.style.stroke = varColor('--accent-hold1');
+                        smallProgress.style.stroke = "#ffffff";
+                        circle.style.backgroundColor = varColor('--accent-hold1');
+                    } else if (currentPhaseIndex === 2) {
+                        instructionText.textContent = "3. EXHALA despacio";
+                        largeProgress.style.stroke = varColor('--accent-exhale');
+                        smallProgress.style.stroke = "#ffffff";
+                        circle.style.backgroundColor = varColor('--accent-exhale');
+                    } else if (currentPhaseIndex === 3) {
+                        instructionText.textContent = "4. SOSTÉN EN VACÍO";
+                        largeProgress.style.stroke = varColor('--accent-hold2');
+                        smallProgress.style.stroke = "#ffffff";
+                        circle.style.backgroundColor = varColor('--accent-hold2');
+                    }
+
+                    if (activeTime < activeDuration) {
+                        animationFrameId = requestAnimationFrame(animateCycle);
+                    }
                 }
 
-                // MOVIMIENTO REAL SINCRONIZADO A PARTIR DE LAS INSTRUCCIONES
-                let activeTime = currentTime - VOICE_START_OFFSET;
-                let duration = (cycleAudio.duration && !isNaN(cycleAudio.duration)) ? cycleAudio.duration : (VOICE_START_OFFSET + 16);
-                let totalActiveDuration = duration - VOICE_START_OFFSET;
+                animationFrameId = requestAnimationFrame(animateCycle);
 
-                let phaseDuration = totalActiveDuration / 4;
-                let currentPhaseIndex = Math.floor(activeTime / phaseDuration);
-                if (currentPhaseIndex > 3) currentPhaseIndex = 3;
-
-                let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
-                let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
-
-                // CUADRADO GRANDE: 1 lado exacto por cada fase de acción
-                let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
-                let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
-                largeProgress.style.strokeDashoffset = largeTargetOffset;
-
-                // CUADRADO PEQUEÑO: 1 lado exacto por cada segundo contado (1, 2, 3, 4)
-                let secondDuration = phaseDuration / 4;
-                let currentSecond = Math.min(Math.floor(phaseElapsed / secondDuration) + 1, 4);
-                circle.textContent = currentSecond;
-
-                let secondProgress = (phaseElapsed % secondDuration) / secondDuration;
-                let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
-                smallProgress.style.strokeDashoffset = smallOffset;
-
-                // Actualizar textos y colores según la fase precisa
-                if (currentPhaseIndex === 0) {
-                    instructionText.textContent = "1. INHALA por la nariz";
-                    largeProgress.style.stroke = "var(--accent-inhale)";
-                    smallProgress.style.stroke = "var(--accent-inhale)";
-                    circle.style.backgroundColor = "var(--accent-inhale)";
-                } else if (currentPhaseIndex === 1) {
-                    instructionText.textContent = "2. SOSTÉN EL AIRE";
-                    largeProgress.style.stroke = "var(--accent-hold1)";
-                    smallProgress.style.stroke = "var(--accent-hold1)";
-                    circle.style.backgroundColor = "var(--accent-hold1)";
-                } else if (currentPhaseIndex === 2) {
-                    instructionText.textContent = "3. EXHALA despacio";
-                    largeProgress.style.stroke = "var(--accent-exhale)";
-                    smallProgress.style.stroke = "var(--accent-exhale)";
-                    circle.style.backgroundColor = "var(--accent-exhale)";
-                } else if (currentPhaseIndex === 3) {
-                    instructionText.textContent = "4. SOSTÉN EN VACÍO";
-                    largeProgress.style.stroke = "var(--accent-hold2)";
-                    smallProgress.style.stroke = "var(--accent-hold2)";
-                    circle.style.backgroundColor = "var(--accent-hold2)";
-                }
-            };
+            }).catch(e => console.log("Audio play error:", e));
 
             cycleAudio.onended = () => {
-                cycleAudio.ontimeupdate = null;
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
                 if (isRunning) {
                     runNextCycle();
                 }
             };
+        }
+
+        function varColor(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
         }
 
         async function finishSession() {
