@@ -76,7 +76,7 @@
             stroke-width: 6;
         }
 
-        /* Cuadrado Grande: 1 lado por cada fase exacta (Inhala, Sostén, Exhala, Vacío) */
+        /* Cuadrado Grande: 1 lado por Fase */
         .box-large-progress {
             fill: none;
             stroke: var(--primary-color);
@@ -206,16 +206,14 @@
     <audio id="audio7" src="Audios/Audio7.mp3" preload="auto"></audio>
     <audio id="audio8" src="Audios/Audio8.mp3" preload="auto"></audio>
 
-    <!-- Música de Fondo Ambiental Piano Suave -->
-    <audio id="bgAudio" src="https://media.geeksforgeeks.org/wp-content/uploads/20230524142525/relaxing-piano-music.mp3" crossorigin="anonymous" preload="auto" loop></audio>
-
     <script>
         let isRunning = false;
         let currentCycle = 0;
         const maxCycles = 4;
         
-        let animationInterval = null;
         let isDuringIntro = false;
+        let audioCtx = null;
+        let ambientGain = null;
 
         const circle = document.getElementById('circle');
         const instructionText = document.getElementById('instructionText');
@@ -224,10 +222,6 @@
         const skipBtn = document.getElementById('skipBtn');
         const largeProgress = document.getElementById('largeProgress');
         const smallProgress = document.getElementById('smallProgress');
-        const bgAudio = document.getElementById('bgAudio');
-
-        // Ajuste de volumen suave al 12%
-        bgAudio.volume = 0.12;
 
         const audios = {
             1: document.getElementById('audio1'),
@@ -243,13 +237,53 @@
         const LARGE_PERIMETER = 800;
         const SMALL_PERIMETER = 400;
 
-        // Desfases exactos del prefijo hablado (ej. "Iniciamos, primer ciclo") antes del primer "Inhala" en cada audio (en segundos)
-        const AUDIO_START_DELAYS = {
-            4: 2.1,
-            5: 2.1,
-            6: 2.1,
-            7: 2.1
+        // Tiempos exactos de inicio del "Inhala" (segundos de silencio/introducción en el audio)
+        const INTRO_VOICE_DELAYS = {
+            4: 2.2,
+            5: 2.2,
+            6: 2.2,
+            7: 2.2
         };
+
+        function initAmbientAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            if (!ambientGain) {
+                try {
+                    let osc1 = audioCtx.createOscillator();
+                    let osc2 = audioCtx.createOscillator();
+                    ambientGain = audioCtx.createGain();
+
+                    osc1.type = 'sine';
+                    osc1.frequency.setValueAtTime(174, audioCtx.currentTime); // Frecuencia Solfeggio relajante (174 Hz)
+                    osc2.type = 'triangle';
+                    osc2.frequency.setValueAtTime(285, audioCtx.currentTime);
+
+                    ambientGain.gain.setValueAtTime(0.015, audioCtx.currentTime);
+
+                    osc1.connect(ambientGain);
+                    osc2.connect(ambientGain);
+                    ambientGain.connect(audioCtx.destination);
+
+                    osc1.start();
+                    osc2.start();
+                } catch(e) { console.log(e); }
+            } else {
+                ambientGain.gain.setValueAtTime(0.015, audioCtx.currentTime);
+            }
+        }
+
+        function stopAmbientAudio() {
+            if (ambientGain && audioCtx) {
+                try {
+                    ambientGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+                } catch(e) {}
+            }
+        }
 
         function playAudioDynamic(audioElem) {
             return new Promise((resolve) => {
@@ -261,16 +295,9 @@
                 audioElem.play().then(() => {
                     audioElem.onended = () => resolve();
                 }).catch(err => {
-                    console.log("Audio play blocked:", err);
+                    console.log("Audio blocked:", err);
                     resolve();
                 });
-            });
-        }
-
-        function playBackgroundMusic() {
-            bgAudio.currentTime = 0;
-            bgAudio.play().catch(err => {
-                console.log("Música de fondo bloqueada por el navegador:", err);
             });
         }
 
@@ -278,11 +305,11 @@
             Object.values(audios).forEach(a => {
                 if (a) {
                     a.pause();
+                    a.ontimeupdate = null;
                     a.currentTime = 0;
                 }
             });
-            bgAudio.pause();
-            bgAudio.currentTime = 0;
+            stopAmbientAudio();
         }
 
         async function toggleExercise() {
@@ -301,8 +328,7 @@
             skipBtn.style.display = 'block';
             isDuringIntro = true;
 
-            // Iniciar música ambiental de fondo inmediatamente tras clic
-            playBackgroundMusic();
+            initAmbientAudio();
 
             instructionText.textContent = "Preparación...";
             await playAudioDynamic(audios[1]);
@@ -339,7 +365,6 @@
             isRunning = false;
             isDuringIntro = false;
             skipBtn.style.display = 'none';
-            clearInterval(animationInterval);
             stopAllAudios();
 
             circle.style.transform = 'scale(1)';
@@ -353,7 +378,7 @@
             startBtn.style.backgroundColor = 'var(--primary-color)';
         }
 
-        async function runNextCycle() {
+        function runNextCycle() {
             if (!isRunning) return;
 
             currentCycle++;
@@ -367,95 +392,86 @@
             let audioIndex = currentCycle + 3;
             let cycleAudio = audios[audioIndex];
 
-            if (cycleAudio) {
-                cycleAudio.currentTime = 0;
-                cycleAudio.play().catch(e => console.log(e));
+            if (!cycleAudio) return;
 
-                let delaySec = AUDIO_START_DELAYS[audioIndex] || 2.0;
+            let introDelay = INTRO_VOICE_DELAYS[audioIndex] || 2.2;
+            largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
+            smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
+            circle.textContent = '--';
 
-                // Esperar a que concluya la frase introductoria ("Iniciamos, primer ciclo...")
-                await new Promise(r => setTimeout(r, delaySec * 1000));
+            cycleAudio.currentTime = 0;
+            cycleAudio.play().catch(e => console.log(e));
+
+            cycleAudio.ontimeupdate = () => {
                 if (!isRunning) return;
 
-                // Obtener duración real del tramo activo de locución
-                let totalDuration = (cycleAudio.duration && !isNaN(cycleAudio.duration)) ? cycleAudio.duration : (delaySec + 16);
-                let activeDurationMs = Math.max((totalDuration - delaySec) * 1000, 14000);
+                let currentTime = cycleAudio.currentTime;
 
-                await runSyncedPhases(activeDurationMs);
-            } else {
-                await runSyncedPhases(16000);
-            }
+                // MANTENER INMÓVIL MIENTRAS DICE "INICIAMOS..."
+                if (currentTime < introDelay) {
+                    largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
+                    smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
+                    instructionText.textContent = "Preparando ciclo...";
+                    circle.textContent = '--';
+                    return;
+                }
 
-            if (isRunning) {
-                runNextCycle();
-            }
-        }
+                // CALCULAR TIEMPO REAL DE LA LOCUCIÓN ACTIVA
+                let activeTime = currentTime - introDelay;
+                let duration = (cycleAudio.duration && !isNaN(cycleAudio.duration)) ? cycleAudio.duration : (introDelay + 16);
+                let totalActiveDuration = duration - introDelay;
 
-        function runSyncedPhases(activeDurationMs) {
-            return new Promise((resolve) => {
-                let startTime = Date.now();
-                let phaseTimeMs = activeDurationMs / 4; // Duración exacta de cada una de las 4 fases
+                let phaseDuration = totalActiveDuration / 4;
+                let currentPhaseIndex = Math.floor(activeTime / phaseDuration);
+                if (currentPhaseIndex > 3) currentPhaseIndex = 3;
 
-                clearInterval(animationInterval);
+                let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
+                let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
 
-                animationInterval = setInterval(() => {
-                    if (!isRunning) {
-                        clearInterval(animationInterval);
-                        resolve();
-                        return;
-                    }
+                // DIBUJAR CUADRADO GRANDE (1 LADO POR FASE)
+                let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
+                let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
+                largeProgress.style.strokeDashoffset = largeTargetOffset;
 
-                    let elapsed = Date.now() - startTime;
-                    let currentPhaseIndex = Math.floor(elapsed / phaseTimeMs);
-                    if (currentPhaseIndex > 3) currentPhaseIndex = 3;
+                // DIBUJAR CUADRADO PEQUEÑO (1 LADO POR CADA NÚMERO HABLADO: 1, 2, 3, 4)
+                let secondDuration = phaseDuration / 4;
+                let currentSecond = Math.min(Math.floor(phaseElapsed / secondDuration) + 1, 4);
+                circle.textContent = currentSecond;
 
-                    let phaseElapsed = elapsed - (currentPhaseIndex * phaseTimeMs);
-                    let phaseProgress = Math.min(phaseElapsed / phaseTimeMs, 1);
-                    
-                    // Mapeo exacto de los 4 números (1 a 4) hablados en el audio
-                    let secondDurationMs = phaseTimeMs / 4;
-                    let currentSecond = Math.min(Math.floor(phaseElapsed / secondDurationMs) + 1, 4);
-                    circle.textContent = currentSecond;
+                let secondProgress = (phaseElapsed % secondDuration) / secondDuration;
+                let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
+                smallProgress.style.strokeDashoffset = smallOffset;
 
-                    // CUADRADO GRANDE: Avanza exactamente 1 lado por cada fase (Inhala, Sostén, Exhala, Vacío)
-                    let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
-                    let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
-                    largeProgress.style.strokeDashoffset = largeTargetOffset;
+                // CAMBIAR TEXTO Y COLOR SEGÚN LA FASE EXACTA DE LA VOZ
+                if (currentPhaseIndex === 0) {
+                    instructionText.textContent = "1. INHALA por la nariz";
+                    largeProgress.style.stroke = "var(--accent-inhale)";
+                    smallProgress.style.stroke = "var(--accent-inhale)";
+                    circle.style.backgroundColor = "var(--accent-inhale)";
+                } else if (currentPhaseIndex === 1) {
+                    instructionText.textContent = "2. SOSTÉN EL AIRE";
+                    largeProgress.style.stroke = "var(--accent-hold1)";
+                    smallProgress.style.stroke = "var(--accent-hold1)";
+                    circle.style.backgroundColor = "var(--accent-hold1)";
+                } else if (currentPhaseIndex === 2) {
+                    instructionText.textContent = "3. EXHALA despacio";
+                    largeProgress.style.stroke = "var(--accent-exhale)";
+                    smallProgress.style.stroke = "var(--accent-exhale)";
+                    circle.style.backgroundColor = "var(--accent-exhale)";
+                } else if (currentPhaseIndex === 3) {
+                    instructionText.textContent = "4. SOSTÉN EN VACÍO";
+                    largeProgress.style.stroke = "var(--accent-hold2)";
+                    smallProgress.style.stroke = "var(--accent-hold2)";
+                    circle.style.backgroundColor = "var(--accent-hold2)";
+                }
+            };
 
-                    // CUADRADO PEQUEÑO: Dibuja exactamente 1 lado por cada número contado (1, 2, 3, 4)
-                    let secondProgress = (phaseElapsed % secondDurationMs) / secondDurationMs;
-                    let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
-                    smallProgress.style.strokeDashoffset = smallOffset;
-
-                    // Textos y colores sincronizados
-                    if (currentPhaseIndex === 0) {
-                        instructionText.textContent = "1. INHALA por la nariz";
-                        largeProgress.style.stroke = "var(--accent-inhale)";
-                        smallProgress.style.stroke = "var(--accent-inhale)";
-                        circle.style.backgroundColor = "var(--accent-inhale)";
-                    } else if (currentPhaseIndex === 1) {
-                        instructionText.textContent = "2. SOSTÉN EL AIRE";
-                        largeProgress.style.stroke = "var(--accent-hold1)";
-                        smallProgress.style.stroke = "var(--accent-hold1)";
-                        circle.style.backgroundColor = "var(--accent-hold1)";
-                    } else if (currentPhaseIndex === 2) {
-                        instructionText.textContent = "3. EXHALA despacio";
-                        largeProgress.style.stroke = "var(--accent-exhale)";
-                        smallProgress.style.stroke = "var(--accent-exhale)";
-                        circle.style.backgroundColor = "var(--accent-exhale)";
-                    } else if (currentPhaseIndex === 3) {
-                        instructionText.textContent = "4. SOSTÉN EN VACÍO";
-                        largeProgress.style.stroke = "var(--accent-hold2)";
-                        smallProgress.style.stroke = "var(--accent-hold2)";
-                        circle.style.backgroundColor = "var(--accent-hold2)";
-                    }
-
-                    if (elapsed >= activeDurationMs) {
-                        clearInterval(animationInterval);
-                        resolve();
-                    }
-                }, 20);
-            });
+            cycleAudio.onended = () => {
+                cycleAudio.ontimeupdate = null;
+                if (isRunning) {
+                    runNextCycle();
+                }
+            };
         }
 
         async function finishSession() {
