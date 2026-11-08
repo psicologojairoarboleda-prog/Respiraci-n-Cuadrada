@@ -31,15 +31,15 @@ const SMALL_PERIMETER = 400;
 
 // Configuración de tiempos de introducción estricta para cada ciclo
 const AUDIO_CONFIG = {
-    4: { introFin: 3.5 }, // Audio4_2.mp3
-    5: { introFin: 3.0 }, // Audio5_2.mp3
-    6: { introFin: 3.0 }, // Audio6_2.mp3
-    7: { introFin: 3.0 }  // Audio7_2.mp3
+    4: { introFin: 3.5 },
+    5: { introFin: 3.0 },
+    6: { introFin: 3.0 },
+    7: { introFin: 3.0 }
 };
 
-// Segundo exacto de Audio9_2.mp3 para iniciar sonando al instante
 const BACKGROUND_START_SECOND = 4.0;
 
+// Función blindada para forzar la reproducción limpia y evitar bloqueos del navegador
 function playAudioDynamic(audioElem) {
     return new Promise((resolve) => {
         if (!audioElem) {
@@ -47,12 +47,18 @@ function playAudioDynamic(audioElem) {
             return;
         }
         audioElem.currentTime = 0;
-        audioElem.play().then(() => {
+        let playPromise = audioElem.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                audioElem.onended = () => resolve();
+            }).catch(error => {
+                console.log("Reproducción bloqueada o error:", error);
+                resolve();
+            });
+        } else {
             audioElem.onended = () => resolve();
-        }).catch(err => {
-            console.log("Audio play blocked:", err);
-            resolve();
-        });
+        }
     });
 }
 
@@ -87,12 +93,13 @@ async function startExercise() {
     skipBtn.style.display = 'block';
     isDuringIntro = true;
 
+    // Inicialización explícita del audio de fondo saltando el silencio inicial
     try {
         bgAudio.currentTime = BACKGROUND_START_SECOND;
         await bgAudio.play();
     } catch(e) {
         bgAudio.currentTime = 0;
-        bgAudio.play().catch(err => console.log(err));
+        bgAudio.play().catch(err => console.log("Fondo bloqueado:", err));
     }
 
     instructionText.textContent = "Preparación...";
@@ -183,7 +190,7 @@ function runNextCycle() {
 
             let elapsed = (timestamp - startTime) / 1000;
 
-            // Congelados durante la introducción de cada ciclo
+            // Congelados estrictos durante la introducción de cada ciclo
             if (elapsed < introOffset) {
                 largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
                 smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
