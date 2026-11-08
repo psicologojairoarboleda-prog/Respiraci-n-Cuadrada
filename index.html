@@ -76,7 +76,7 @@
             stroke-width: 6;
         }
 
-        /* Cuadrado Grande: 1 lado por cada fase */
+        /* Cuadrado Grande: 1 lado por Fase */
         .box-large-progress {
             fill: none;
             stroke: var(--primary-color);
@@ -87,7 +87,7 @@
             transition: stroke 0.3s ease;
         }
 
-        /* Cuadrado Pequeño: 1 lado por cada segundo (1, 2, 3, 4) */
+        /* Cuadrado Pequeño: 1 lado por Segundo (1, 2, 3, 4) */
         .box-small-progress {
             fill: none;
             stroke: #ffffff;
@@ -196,7 +196,7 @@
         </div>
     </div>
 
-    <!-- Audios Locutados y Música de Fondo Local -->
+    <!-- Archivos de Audio Locutados y Música de Fondo -->
     <audio id="audio1" src="Audios/Audio1.mp3" preload="auto"></audio>
     <audio id="audio2" src="Audios/Audio2.mp3" preload="auto"></audio>
     <audio id="audio3" src="Audios/Audio3.mp3" preload="auto"></audio>
@@ -223,7 +223,7 @@
         const smallProgress = document.getElementById('smallProgress');
         const bgAudio = document.getElementById('bgAudio');
 
-        // Volumen de la música ambiental (12%)
+        // Volumen de la música ambiental suave (12%)
         bgAudio.volume = 0.12;
 
         const audios = {
@@ -240,12 +240,13 @@
         const LARGE_PERIMETER = 800;
         const SMALL_PERIMETER = 400;
 
-        // Tiempos de introducción individuales para cada ciclo (Audio 4, 5, 6, 7)
+        // TIEMPOS EXACTOS DE INTRODUCCIÓN ("Iniciamos...") PARA CADA CICLO
+        // Si notas que algún ciclo arranca medio segundo antes o después, puedes afinar su número aquí:
         const INTRO_OFFSETS = {
-            4: 2.2,
-            5: 2.2,
-            6: 2.2,
-            7: 2.2
+            4: 2.5, // Audio4 (Ciclo 1)
+            5: 2.5, // Audio5 (Ciclo 2)
+            6: 2.5, // Audio6 (Ciclo 3)
+            7: 2.5  // Audio7 (Ciclo 4)
         };
 
         function playAudioDynamic(audioElem) {
@@ -295,12 +296,11 @@
             skipBtn.style.display = 'block';
             isDuringIntro = true;
 
-            // FUERZA EL INICIO INMEDIATO DE LA MÚSICA DESDE EL SEGUNDO 1 (evitando demoras de carga)
+            // Iniciar música de fondo inmediatamente desde el segundo 1
             try {
-                bgAudio.currentTime = 1.0; 
+                bgAudio.currentTime = 1.0;
                 await bgAudio.play();
             } catch(e) {
-                console.log("Bg audio play blocked, retrying standard:", e);
                 bgAudio.currentTime = 0;
                 bgAudio.play().catch(err => console.log(err));
             }
@@ -369,18 +369,19 @@
 
             if (!cycleAudio) return;
 
+            // BLOQUEO ABSOLUTO: Forzar ambos cuadrados completamente quietos y en cero al iniciar el audio
             largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
             smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
             circle.textContent = '--';
             instructionText.textContent = "Escucha la guía...";
 
-            let introOffset = INTRO_OFFSETS[audioIndex] || 2.2;
+            let introOffset = INTRO_OFFSETS[audioIndex] || 2.5;
 
             cycleAudio.currentTime = 0;
             cycleAudio.play().then(() => {
                 let totalDuration = cycleAudio.duration;
                 let activeDuration = totalDuration - introOffset;
-                if (activeDuration < 10) activeDuration = 14; 
+                if (activeDuration < 10) activeDuration = 16; 
 
                 let phaseDuration = activeDuration / 4; 
                 let startTime = null;
@@ -391,6 +392,7 @@
 
                     let elapsed = (timestamp - startTime) / 1000;
 
+                    // MANTENER AMBOS CUADRADOS ESTÁTICOS Y EN CERO DURANTE LA INTRODUCCIÓN ("Iniciamos...")
                     if (elapsed < introOffset) {
                         largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
                         smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
@@ -399,6 +401,7 @@
                         return;
                     }
 
+                    // A PARTIR DE AQUÍ (CUANDO EMPIEZA "INHALA...") ARRANCA EL MOVIMIENTO
                     let activeTime = elapsed - introOffset;
                     let currentPhaseIndex = Math.floor(activeTime / phaseDuration);
 
@@ -409,10 +412,12 @@
                     let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
                     let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
 
+                    // CUADRADO GRANDE: 1 lado por fase
                     let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
                     let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
                     largeProgress.style.strokeDashoffset = largeTargetOffset;
 
+                    // CUADRADO PEQUEÑO: 1 lado por cada segundo contado (1, 2, 3, 4)
                     let secondDuration = phaseDuration / 4;
                     let currentSecond = Math.min(Math.floor(phaseElapsed / secondDuration) + 1, 4);
                     circle.textContent = currentSecond;
@@ -421,6 +426,7 @@
                     let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
                     smallProgress.style.strokeDashoffset = smallOffset;
 
+                    // Textos y colores sincronizados
                     if (currentPhaseIndex === 0) {
                         instructionText.textContent = "1. INHALA por la nariz";
                         largeProgress.style.stroke = varColor('--accent-inhale');
