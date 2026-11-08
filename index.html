@@ -76,7 +76,7 @@
             stroke-width: 6;
         }
 
-        /* Cuadrado Grande: 1 lado por Fase */
+        /* Cuadrado Grande: 1 lado = 1 Fase */
         .box-large-progress {
             fill: none;
             stroke: var(--primary-color);
@@ -87,14 +87,14 @@
             transition: stroke 0.3s ease;
         }
 
-        /* Cuadrado Pequeño Interior: Recorre sus 4 lados suavemente durante la fase */
+        /* Cuadrado Pequeño: 1 lado = 1 Segundo */
         .box-small-progress {
             fill: none;
             stroke: #ffffff;
             stroke-width: 4;
             stroke-dasharray: 400;
             stroke-dashoffset: 400;
-            opacity: 0.85;
+            opacity: 0.9;
         }
 
         .breathing-circle {
@@ -187,11 +187,11 @@
 
         <div class="box-wrapper">
             <svg class="box-svg" viewBox="0 0 240 240">
-                <!-- Cuadrado Grande (Fases) -->
+                <!-- Cuadrado Grande: 1 lado = 1 Fase -->
                 <rect class="box-bg" x="20" y="20" width="200" height="200" rx="8" />
                 <rect class="box-large-progress" id="largeProgress" x="20" y="20" width="200" height="200" rx="8" />
                 
-                <!-- Cuadrado Pequeño Interior (Progreso suave por fase) -->
+                <!-- Cuadrado Pequeño: 1 lado = 1 Segundo -->
                 <rect class="box-bg" x="70" y="70" width="100" height="100" rx="4" />
                 <rect class="box-small-progress" id="smallProgress" x="70" y="70" width="100" height="100" rx="4" />
             </svg>
@@ -218,8 +218,8 @@
     <audio id="audio7" src="Audios/Audio7.mp3" preload="auto"></audio>
     <audio id="audio8" src="Audios/Audio8.mp3" preload="auto"></audio>
 
-    <!-- Música de fondo instrumental relajante de alta calidad (bucle continuo) -->
-    <audio id="bgAudio" src="https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3" preload="auto" loop></audio>
+    <!-- Música de fondo de piano suave y relajante (en bucle) -->
+    <audio id="bgAudio" src="https://cdn.pixabay.com/download/audio/2022/05/16/audio_db32f790c3.mp3" preload="auto" loop></audio>
 
     <script>
         let isRunning = false;
@@ -240,8 +240,8 @@
         const audioBtn = document.getElementById('audioBtn');
         const bgAudio = document.getElementById('bgAudio');
 
-        // Volumen de música ambiental suave para no competir con tu voz (12%)
-        bgAudio.volume = 0.12;
+        // Volumen de piano ambiental muy sutil (8%)
+        bgAudio.volume = 0.08;
 
         const audios = {
             1: document.getElementById('audio1'),
@@ -376,11 +376,16 @@
             let cycleAudio = audios[currentCycle + 3];
 
             if (audioEnabled && cycleAudio) {
-                let durationMs = (cycleAudio.duration && !isNaN(cycleAudio.duration)) ? cycleAudio.duration * 1000 : 16000;
-                
                 cycleAudio.currentTime = 0;
                 cycleAudio.muted = !audioEnabled;
-                cycleAudio.play().catch(e => console.log(e));
+                
+                // Reproducimos el audio del ciclo y esperamos a que comience de verdad la locución de la primera fase
+                let playPromise = cycleAudio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(e => console.log(e));
+                }
+
+                let durationMs = (cycleAudio.duration && !isNaN(cycleAudio.duration)) ? cycleAudio.duration * 1000 : 16000;
 
                 await runSyncedPhases(durationMs);
             } else {
@@ -395,7 +400,7 @@
         function runSyncedPhases(totalAudioDurationMs) {
             return new Promise((resolve) => {
                 let startTime = Date.now();
-                let phaseTimeMs = totalAudioDurationMs / 4; 
+                let phaseTimeMs = totalAudioDurationMs / 4; // Cada una de las 4 fases ocupa el 25% exacto de la locución del ciclo
 
                 clearInterval(animationInterval);
 
@@ -413,18 +418,20 @@
                     let phaseElapsed = elapsed - (currentPhaseIndex * phaseTimeMs);
                     let phaseProgress = Math.min(phaseElapsed / phaseTimeMs, 1);
                     
+                    // Conteo visual de 1 a 4 segundos sincronizado de forma limpia con los cuartos de fase
                     let currentSecond = Math.min(Math.floor(phaseElapsed / (phaseTimeMs / 4)) + 1, 4);
                     circle.textContent = currentSecond;
 
-                    // CUADRADO GRANDE: 1 lado por fase
+                    // CUADRADO GRANDE: 1 lado por Fase (Avanza de forma continua y fluida con el audio)
                     let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
                     let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
                     largeProgress.style.strokeDashoffset = largeTargetOffset;
 
-                    // CUADRADO PEQUEÑO INTERIOR: Da 1 vuelta completa fluida y suave durante toda la fase actual
-                    let smallOffset = SMALL_PERIMETER - (SMALL_PERIMETER * phaseProgress);
+                    // CUADRADO PEQUEÑO INTERIOR: Cada lado es 1 segundo (da una vuelta completa de 4 lados exactamente en cada fase)
+                    let smallOffset = SMALL_PERIMETER - (SMALL_PERIMETER * (phaseProgress * 4) % 1);
                     smallProgress.style.strokeDashoffset = smallOffset;
 
+                    // Textos y colores de instrucción coordinados con el momento exacto
                     if (currentPhaseIndex === 0) {
                         instructionText.textContent = "1. INHALA por la nariz";
                         largeProgress.style.stroke = "var(--accent-inhale)";
