@@ -66,6 +66,9 @@
             width: 220px;
             height: 220px;
             margin: 10px auto 20px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .box-svg {
@@ -95,30 +98,22 @@
             stroke-dashoffset: 760; /* Empieza vacío */
         }
 
-        /* Contenedor interno infalible para centrar el GIF sin recortes */
-        .image-wrapper {
+        /* GIF centrado, sin tarjeta blanca y mezclado de forma transparente con el fondo */
+        .center-graphic {
             position: absolute;
-            top: 28px;
-            left: 28px;
-            right: 28px;
-            bottom: 28px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
             z-index: 1;
-            background-color: #faf8f5;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            mix-blend-mode: multiply; /* Oculta el fondo blanco del GIF */
+            display: none; /* Oculto inicialmente y durante la intro */
+            transition: opacity 0.3s ease;
+            opacity: 0;
         }
 
-        /* GIF perfectamente adaptado */
-        .center-graphic {
-            max-width: 100%;
-            max-height: 100%;
-            width: auto;
-            height: auto;
-            object-fit: contain;
+        .center-graphic.active {
+            display: block;
+            opacity: 1;
         }
 
         .timer-info {
@@ -157,10 +152,8 @@
         <div class="instruction" id="instructionText">Listo</div>
 
         <div class="box-container">
-            <!-- Contenedor y GIF dentro de la ruta exacta -->
-            <div class="image-wrapper">
-                <img src="Imagenes/GIF1.gif" alt="Meditación" class="center-graphic" id="meditationGif">
-            </div>
+            <!-- GIF con integración transparente y control de visibilidad por clase -->
+            <img src="Imagenes/GIF1.gif" alt="Meditación" class="center-graphic" id="meditationGif">
             
             <svg class="box-svg" viewBox="0 0 220 220">
                 <rect class="box-bg" x="15" y="15" width="190" height="190" rx="20"/>
@@ -201,6 +194,7 @@
         const startBtn = document.getElementById('startBtn');
         const skipBtn = document.getElementById('skipBtn');
         const boxProgress = document.getElementById('boxProgress');
+        const meditationGif = document.getElementById('meditationGif');
 
         // Perímetro total del rectángulo SVG (190 * 4 = 760)
         const TOTAL_PERIMETER = 760;
@@ -244,6 +238,9 @@
             startBtn.textContent = 'Detener';
             startBtn.style.backgroundColor = '#d9534f';
             skipBtn.style.display = 'block';
+            
+            // Asegurar que el GIF permanezca oculto durante la introducción
+            meditationGif.classList.remove('active');
 
             // Iniciar música de fondo en el segundo 10
             bgMusic.currentTime = 10;
@@ -286,6 +283,9 @@
             }
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
+            // Ocultar GIF al detener
+            meditationGif.classList.remove('active');
+
             boxProgress.style.transition = 'none';
             boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
             instructionText.textContent = 'Listo';
@@ -298,8 +298,14 @@
         function runCycleSequence(cycleNum) {
             if (!isRunning) return;
 
+            // Mostrar el GIF al comenzar los ciclos de respiración
+            meditationGif.classList.add('active');
+
             if (cycleNum > 4) {
                 cycleText.textContent = `Ciclo: 4 / 4`;
+                // Ocultar el GIF al finalizar las fases
+                meditationGif.classList.remove('active');
+                
                 playVoiceSequence(voiceAudios.outro, "Completado", () => {
                     instructionText.textContent = '¡Paz!';
                     stopExercise();
@@ -316,7 +322,7 @@
 
             cycleAudio.play().catch(err => console.warn("Error ciclo audio:", err));
 
-            // Sincronización milimétrica robusta con validación de duración del audio
+            // Sincronización milimétrica con la duración del audio
             function syncWithAudio() {
                 if (!isRunning || currentVoiceAudio !== cycleAudio) return;
 
@@ -334,7 +340,7 @@
                     const elapsedBreathing = t - introOffset;
                     const progress = Math.min(1, Math.max(0, elapsedBreathing / breathingDuration));
                     
-                    // División estricta en 4 fases secuenciales sin superposiciones
+                    // División en 4 fases secuenciales
                     const phaseIndex = Math.min(3, Math.floor(progress * 4));
                     const phaseProgress = Math.min(1, Math.max(0, (progress * 4) - phaseIndex));
 
@@ -371,7 +377,6 @@
                 animationFrameId = requestAnimationFrame(syncWithAudio);
             };
 
-            // Asegurar ejecución si los metadatos tardan en estar listos
             cycleAudio.onloadedmetadata = () => {
                 if (!animationFrameId && !cycleAudio.paused) {
                     animationFrameId = requestAnimationFrame(syncWithAudio);
