@@ -66,14 +66,13 @@
             align-items: center;
             color: white;
             font-weight: bold;
-            font-size: 2.2rem;
+            font-size: 1.8rem;
             box-shadow: 0 0 20px rgba(139, 123, 176, 0.3);
             transform: scale(1);
-            transition: transform 1s linear, background-color 0.5s ease;
         }
 
         .instruction {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 600;
             min-height: 45px;
             margin: 15px 0;
@@ -85,7 +84,7 @@
         .timer-info {
             font-size: 0.9rem;
             color: #777;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .btn {
@@ -99,6 +98,12 @@
             cursor: pointer;
             width: 100%;
             transition: background-color 0.3s ease;
+            margin-top: 8px;
+        }
+
+        .btn-skip {
+            background-color: #a0a0a0;
+            display: none; /* Oculto por defecto */
         }
     </style>
 </head>
@@ -116,15 +121,16 @@
         <div class="timer-info" id="cycleText">Ciclo: 0 / 4</div>
 
         <button class="btn" id="startBtn" onclick="toggleExercise()">Iniciar Respiración</button>
+        <button class="btn btn-skip" id="skipBtn" onclick="skipIntro()">Saltar Intro</button>
     </div>
 
     <script>
-        // Música de fondo dentro de la carpeta Audios
+        // Música de fondo (Audio9.mp3)
         const bgMusic = new Audio('Audios/Audio9.mp3');
         bgMusic.loop = true;
-        bgMusic.volume = 0.3; // Volumen suave de fondo
+        bgMusic.volume = 0.3;
 
-        // Audios de voz dentro de la carpeta Audios
+        // Audios de voz
         const voiceAudios = {
             intro: new Audio('Audios/Audio1.mp3'),
             technique: new Audio('Audios/Audio2.mp3'),
@@ -137,13 +143,14 @@
         };
 
         let isRunning = false;
-        let countdownInterval;
         let currentVoiceAudio = null;
+        let currentTimeout = null;
 
         const circle = document.getElementById('circle');
         const instructionText = document.getElementById('instructionText');
         const cycleText = document.getElementById('cycleText');
         const startBtn = document.getElementById('startBtn');
+        const skipBtn = document.getElementById('skipBtn');
 
         const MIN_SCALE = 1.0;
         const MAX_SCALE = 1.8;
@@ -156,6 +163,7 @@
             }
         }
 
+        // Reproduce una pista de voz y avanza al terminar
         function playVoiceSequence(audioObj, text, onEndedCallback) {
             if (!isRunning) return;
             
@@ -179,19 +187,39 @@
             isRunning = true;
             startBtn.textContent = 'Detener';
             startBtn.style.backgroundColor = '#d9534f';
+            skipBtn.style.display = 'block'; // Mostrar botón saltar intro
 
-            // Iniciar música de fondo (Audio9) desde el segundo 10
+            // Iniciar música de fondo en el segundo 10
             bgMusic.currentTime = 10;
-            bgMusic.play().catch(err => console.warn("Música bloqueada por navegador:", err));
+            bgMusic.play().catch(err => console.warn("Música bloqueada:", err));
 
-            // Secuencia de audios de voz
+            // Secuencia de introducción
             playVoiceSequence(voiceAudios.intro, "Escucha las indicaciones...", () => {
                 playVoiceSequence(voiceAudios.technique, "Técnica de respiración...", () => {
                     playVoiceSequence(voiceAudios.prep, "Prepárate...", () => {
+                        skipBtn.style.display = 'none'; // Ocultar saltar intro al iniciar los ciclos
                         runCycleSequence(1);
                     });
                 });
             });
+        }
+
+        // Función para el botón "Saltar Intro"
+        function skipIntro() {
+            if (!isRunning) return;
+
+            // Detener audio de intro actual
+            if (currentVoiceAudio) {
+                currentVoiceAudio.pause();
+                currentVoiceAudio.currentTime = 0;
+                currentVoiceAudio.onended = null;
+            }
+            if (currentTimeout) {
+                clearTimeout(currentTimeout);
+            }
+
+            skipBtn.style.display = 'none';
+            runCycleSequence(1); // Saltar directo al ciclo 1
         }
 
         function stopExercise() {
@@ -203,10 +231,14 @@
             if (currentVoiceAudio) {
                 currentVoiceAudio.pause();
                 currentVoiceAudio.currentTime = 0;
+                currentVoiceAudio.onended = null;
+            }
+            if (currentTimeout) {
+                clearTimeout(currentTimeout);
             }
 
-            clearInterval(countdownInterval);
-
+            // Resetear interfaz
+            circle.style.transition = 'none';
             circle.style.transform = `scale(${MIN_SCALE})`;
             circle.style.backgroundColor = 'var(--primary-color)';
             circle.textContent = '--';
@@ -214,8 +246,10 @@
             cycleText.textContent = 'Ciclo: 0 / 4';
             startBtn.textContent = 'Iniciar Respiración';
             startBtn.style.backgroundColor = 'var(--primary-color)';
+            skipBtn.style.display = 'none';
         }
 
+        // Ejecuta los ciclos adaptándose exactamente a la duración del audio de voz correspondiente
         function runCycleSequence(cycleNum) {
             if (!isRunning) return;
 
@@ -230,61 +264,80 @@
 
             cycleText.textContent = `Ciclo: ${cycleNum} / 4`;
             const cycleAudio = voiceAudios[`cycle${cycleNum}`];
+            currentVoiceAudio = cycleAudio;
+            currentVoiceAudio.currentTime = 0;
 
-            playVoiceSequence(cycleAudio, `Ciclo ${cycleNum} en curso...`, () => {
-                runCycleSequence(cycleNum + 1);
-            });
+            instructionText.textContent = `Ciclo ${cycleNum} en curso...`;
 
-            runVisualPhase('inhale', 4, '#9d8ec2', () => {
-                runVisualPhase('hold', 4, '#8b7bb0', () => {
-                    runVisualPhase('exhale', 4, '#bdae8b', () => {
-                        runVisualPhase('pause', 4, '#779ecb', () => {});
-                    });
-                });
-            });
-        }
-
-        function runVisualPhase(phaseType, totalSeconds, color, onComplete) {
-            if (!isRunning) return;
-
-            circle.style.backgroundColor = color;
-            let remainingSeconds = totalSeconds;
-
-            const updateVisuals = (currentSecond) => {
-                let elapsed = totalSeconds - currentSecond;
-                let scale = MIN_SCALE;
-
-                if (phaseType === 'inhale') {
-                    scale = MIN_SCALE + ((MAX_SCALE - MIN_SCALE) * (elapsed / totalSeconds));
-                } else if (phaseType === 'hold') {
-                    scale = MAX_SCALE;
-                } else if (phaseType === 'exhale') {
-                    scale = MAX_SCALE - ((MAX_SCALE - MIN_SCALE) * (elapsed / totalSeconds));
-                } else if (phaseType === 'pause') {
-                    scale = MIN_SCALE;
-                }
-
-                circle.style.transform = `scale(${scale})`;
-                circle.textContent = currentSecond;
-            };
-
-            updateVisuals(remainingSeconds);
-
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
-                if (!isRunning) {
-                    clearInterval(countdownInterval);
+            // Reproducir el audio del ciclo y sincronizar las animaciones con su duración real
+            cycleAudio.play().then(() => {
+                const totalDuration = cycleAudio.duration; // Duración real del archivo de voz
+                if (isNaN(totalDuration) || totalDuration <= 0) {
+                    fallbackCycle(cycleNum);
                     return;
                 }
-                remainingSeconds--;
-                if (remainingSeconds >= 0) {
-                    updateVisuals(remainingSeconds);
+
+                // La respiración cuadrada divide el audio en 4 partes iguales exactas
+                const phaseDuration = totalDuration / 4; 
+
+                // Fase 1: Inhalar
+                setPhaseAnimation('Inhala por la nariz...', '#9d8ec2', MAX_SCALE, phaseDuration, () => {
+                    if (!isRunning) return;
+                    // Fase 2: Sostener
+                    setPhaseAnimation('Sostén el aire...', '#8b7bb0', MAX_SCALE, phaseDuration, () => {
+                        if (!isRunning) return;
+                        // Fase 3: Exhalar
+                        setPhaseAnimation('Exhala lentamente...', '#bdae8b', MIN_SCALE, phaseDuration, () => {
+                            if (!isRunning) return;
+                            // Fase 4: Pausa / Vacío
+                            setPhaseAnimation('Mantén en vacío...', '#779ecb', MIN_SCALE, phaseDuration, () => {});
+                        });
+                    });
+                });
+
+            }).catch(err => {
+                console.warn("Error al reproducir audio del ciclo:", err);
+                fallbackCycle(cycleNum);
+            });
+
+            cycleAudio.onended = () => {
+                if (isRunning) {
+                    runCycleSequence(cycleNum + 1);
                 }
-                if (remainingSeconds <= 0) {
-                    clearInterval(countdownInterval);
-                    if (onComplete) onComplete();
+            };
+        }
+
+        // Controla la transición suave de tamaño y color sincronizada con la fase
+        function setPhaseAnimation(text, color, targetScale, durationSeconds, onPhaseComplete) {
+            if (!isRunning) return;
+
+            instructionText.textContent = text;
+            circle.style.backgroundColor = color;
+            
+            // Aplicar la transición de CSS exactamente con la duración de esta fase del audio
+            circle.style.transition = `transform ${durationSeconds}s linear, background-color 0.5s ease`;
+            circle.style.transform = `scale(${targetScale})`;
+
+            // Contador visual dinámico dentro del círculo
+            let remaining = Math.ceil(durationSeconds);
+            circle.textContent = remaining;
+
+            const interval = setInterval(() => {
+                remaining--;
+                if (remaining > 0 && isRunning) {
+                    circle.textContent = remaining;
                 }
             }, 1000);
+
+            currentTimeout = setTimeout(() => {
+                clearInterval(interval);
+                if (onPhaseComplete) onPhaseComplete();
+            }, durationSeconds * 1000);
+        }
+
+        function fallbackCycle(cycleNum) {
+            // Plan de respaldo por si el navegador bloquea la lectura de duración del audio
+            runCycleSequence(cycleNum + 1);
         }
     </script>
 </body>
