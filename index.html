@@ -48,7 +48,7 @@
             margin-bottom: 15px;
         }
 
-        /* Texto de instrucción ubicado arriba del cuadro para no tapar el GIF */
+        /* Texto de instrucción ubicado arriba del cuadro */
         .instruction {
             font-size: 1.25rem;
             font-weight: 700;
@@ -98,14 +98,16 @@
             stroke-dashoffset: 760; /* Empieza vacío */
         }
 
-        /* Nuevo GIF central completamente visible y despejado */
+        /* GIF central realzado con sombra y fondo de respaldo */
         .center-graphic {
             position: absolute;
-            width: 160px;
-            height: 160px;
-            border-radius: 20px;
+            width: 150px;
+            height: 150px;
+            border-radius: 16px;
             object-fit: cover;
             z-index: 1;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            background-color: #faf8f5;
         }
 
         .timer-info {
@@ -301,12 +303,12 @@
 
             cycleAudio.play().catch(err => console.warn("Error ciclo audio:", err));
 
-            // Sincronización milimétrica estricta con el audio real de cada ciclo
+            // Sincronización milimétrica robusta con validación y reintento de metadatos de duración
             function syncWithAudio() {
-                if (!isRunning) return;
+                if (!isRunning || currentVoiceAudio !== cycleAudio) return;
 
                 const t = cycleAudio.currentTime;
-                const duration = cycleAudio.duration || 16;
+                const duration = (cycleAudio.duration && !isNaN(cycleAudio.duration) && cycleAudio.duration > 0) ? cycleAudio.duration : 16;
                 
                 // Tiempo de espera exacto antes de que empiece "Inhala" (Ciclo 1: 5.2s, Ciclos 2-4: 3.0s)
                 const introOffset = (cycleNum === 1) ? 5.2 : 3.0; 
@@ -315,7 +317,7 @@
                 if (t < introOffset) {
                     boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
                     instructionText.textContent = `Ciclo ${cycleNum}`;
-                } else if (t >= introOffset && t <= duration) {
+                } else if (t >= introOffset) {
                     const elapsedBreathing = t - introOffset;
                     const progress = Math.min(1, Math.max(0, elapsedBreathing / breathingDuration));
                     
@@ -347,13 +349,20 @@
                     boxProgress.style.strokeDashoffset = targetOffset;
                 }
 
-                if (!cycleAudio.paused && !cycleAudio.ended) {
+                if (!cycleAudio.paused && !cycleAudio.ended && isRunning) {
                     animationFrameId = requestAnimationFrame(syncWithAudio);
                 }
             }
 
             cycleAudio.onplay = () => {
                 animationFrameId = requestAnimationFrame(syncWithAudio);
+            };
+
+            // Asegurar ejecución si los metadatos tardan en estar listos
+            cycleAudio.onloadedmetadata = () => {
+                if (!animationFrameId && !cycleAudio.paused) {
+                    animationFrameId = requestAnimationFrame(syncWithAudio);
+                }
             };
 
             cycleAudio.onended = () => {
