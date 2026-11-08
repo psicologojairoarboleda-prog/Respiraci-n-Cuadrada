@@ -223,7 +223,7 @@
         const smallProgress = document.getElementById('smallProgress');
         const bgAudio = document.getElementById('bgAudio');
 
-        // Volumen de la música ambiental (suave de fondo al 12%)
+        // Volumen de la música ambiental (12%)
         bgAudio.volume = 0.12;
 
         const audios = {
@@ -239,6 +239,14 @@
 
         const LARGE_PERIMETER = 800;
         const SMALL_PERIMETER = 400;
+
+        // Tiempos de introducción individuales para cada ciclo (Audio 4, 5, 6, 7)
+        const INTRO_OFFSETS = {
+            4: 2.2,
+            5: 2.2,
+            6: 2.2,
+            7: 2.2
+        };
 
         function playAudioDynamic(audioElem) {
             return new Promise((resolve) => {
@@ -287,9 +295,15 @@
             skipBtn.style.display = 'block';
             isDuringIntro = true;
 
-            // Iniciar música ambiental de fondo automática
-            bgAudio.currentTime = 0;
-            bgAudio.play().catch(e => console.log("Bg audio play blocked:", e));
+            // FUERZA EL INICIO INMEDIATO DE LA MÚSICA DESDE EL SEGUNDO 1 (evitando demoras de carga)
+            try {
+                bgAudio.currentTime = 1.0; 
+                await bgAudio.play();
+            } catch(e) {
+                console.log("Bg audio play blocked, retrying standard:", e);
+                bgAudio.currentTime = 0;
+                bgAudio.play().catch(err => console.log(err));
+            }
 
             instructionText.textContent = "Preparación...";
             await playAudioDynamic(audios[1]);
@@ -355,22 +369,20 @@
 
             if (!cycleAudio) return;
 
-            // Mantener ambos cuadrados completamente estáticos y en cero al inicio del audio
             largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
             smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
             circle.textContent = '--';
             instructionText.textContent = "Escucha la guía...";
 
+            let introOffset = INTRO_OFFSETS[audioIndex] || 2.2;
+
             cycleAudio.currentTime = 0;
             cycleAudio.play().then(() => {
-                // Una vez que el audio arranca, leemos su duración total real de forma dinámica
                 let totalDuration = cycleAudio.duration;
-                // Estimamos que los primeros 2.2 segundos corresponden a la introducción hablada ("Iniciamos...")
-                let introOffset = 2.2; 
                 let activeDuration = totalDuration - introOffset;
-                if (activeDuration < 10) activeDuration = 14; // Resguardo por seguridad
+                if (activeDuration < 10) activeDuration = 14; 
 
-                let phaseDuration = activeDuration / 4; // Cada una de las 4 fases
+                let phaseDuration = activeDuration / 4; 
                 let startTime = null;
 
                 function animateCycle(timestamp) {
@@ -379,7 +391,6 @@
 
                     let elapsed = (timestamp - startTime) / 1000;
 
-                    // MANTENER ESTÁTICO MIENTRAS SUENA LA INTRODUCCIÓN ("Iniciamos...")
                     if (elapsed < introOffset) {
                         largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
                         smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
@@ -388,7 +399,6 @@
                         return;
                     }
 
-                    // TIEMPO ACTIVO DE LAS 4 FASES DE RESPIRACIÓN
                     let activeTime = elapsed - introOffset;
                     let currentPhaseIndex = Math.floor(activeTime / phaseDuration);
 
@@ -399,12 +409,10 @@
                     let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
                     let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
 
-                    // CUADRADO GRANDE: Avanza un lado completo por fase exacta
                     let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
                     let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
                     largeProgress.style.strokeDashoffset = largeTargetOffset;
 
-                    // CUADRADO PEQUEÑO: Dibuja un lado por cada segundo contado (1, 2, 3, 4)
                     let secondDuration = phaseDuration / 4;
                     let currentSecond = Math.min(Math.floor(phaseElapsed / secondDuration) + 1, 4);
                     circle.textContent = currentSecond;
@@ -413,7 +421,6 @@
                     let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
                     smallProgress.style.strokeDashoffset = smallOffset;
 
-                    // Actualizar textos y colores visuales según la fase activa
                     if (currentPhaseIndex === 0) {
                         instructionText.textContent = "1. INHALA por la nariz";
                         largeProgress.style.stroke = varColor('--accent-inhale');
