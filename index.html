@@ -3,175 +3,290 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guía de Respiración Cuadrada</title>
+    <title>Respiración Guiada - Calm</title>
     <style>
         :root {
-            --bg-color: #f7f5f0;
+            --bg-color: #f4f0ea;
             --card-bg: #ffffff;
-            --text-color: #4a453f;
-            --accent-color: #8c8275;
-            --accent-light: #d6cfc7;
-            --shadow-color: rgba(0, 0, 0, 0.05);
+            --primary-color: #8b7bb0;
+            --text-color: #2c2c2c;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            margin: 0;
-            padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         .container {
             background-color: var(--card-bg);
-            max-width: 480px;
-            width: 90%;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px var(--shadow-color);
+            border-radius: 24px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
             text-align: center;
-            box-sizing: border-box;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
         }
 
         h1 {
-            font-size: 1.4rem;
-            font-weight: 500;
-            margin-bottom: 6px;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            color: var(--primary-color);
         }
 
         p.subtitle {
-            font-size: 0.9rem;
-            color: var(--accent-color);
-            margin-bottom: 35px;
+            font-size: 0.95rem;
+            color: #666;
+            margin-top: 0;
+            margin-bottom: 30px;
+        }
+
+        .circle-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 220px;
+            margin: 20px 0;
         }
 
         .breathing-circle {
-            width: 160px;
-            height: 160px;
-            border: 4px solid var(--accent-light);
+            width: 110px;
+            height: 110px;
+            background-color: var(--primary-color);
             border-radius: 50%;
-            margin: 0 auto 30px auto;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 1rem;
-            font-weight: 500;
+            color: white;
+            font-weight: bold;
+            font-size: 2.2rem;
+            box-shadow: 0 0 20px rgba(139, 123, 176, 0.3);
+            transform: scale(1);
+            transition: transform 1s linear, background-color 0.5s ease;
         }
 
-        .instructions-box {
-            background-color: var(--bg-color);
-            padding: 18px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            min-height: 50px;
+        .instruction {
+            font-size: 1.2rem;
+            font-weight: 600;
+            min-height: 45px;
+            margin: 15px 0;
             display: flex;
-            justify-content: center;
             align-items: center;
-            font-size: 0.95rem;
+            justify-content: center;
         }
 
-        button {
-            background-color: var(--text-color);
-            color: #ffffff;
+        .timer-info {
+            font-size: 0.9rem;
+            color: #777;
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
             border: none;
-            padding: 14px 32px;
-            font-size: 0.95rem;
+            padding: 14px 28px;
             border-radius: 30px;
+            font-size: 1rem;
+            font-weight: bold;
             cursor: pointer;
-            transition: opacity 0.2s ease;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .hidden {
-            display: none !important;
+            width: 100%;
+            transition: background-color 0.3s ease;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Respiración Cuadrada</h1>
-        <p class="subtitle">Práctica guiada</p>
+        <h1>RESPIRACIÓN CUADRADA</h1>
+        <p class="subtitle">Respira para calmar tu cuerpo y mente</p>
 
-        <div class="instructions-box" id="instructionText">
-            Presiona el botón para comenzar la práctica.
+        <div class="circle-container">
+            <div class="breathing-circle" id="circle">--</div>
         </div>
 
-        <div class="breathing-circle" id="circle">
-            <span id="statusLabel">Listo</span>
-        </div>
+        <div class="instruction" id="instructionText">Haz clic en Iniciar</div>
+        <div class="timer-info" id="cycleText">Ciclo: 0 / 4</div>
 
-        <button id="startButton" onclick="initPractice()">Iniciar Práctica</button>
+        <button class="btn" id="startBtn" onclick="toggleExercise()">Iniciar Respiración</button>
     </div>
 
     <script>
-        // LISTA DE AUDIOS: Asegúrate de que los nombres coincidan exactamente en tu repositorio
-        const guideFiles = [
-            'Audio1.mp3',
-            'Audio2.mp3',
-            'Audio3.mp3',
-            'Audio4.mp3',
-            'Audio5.mp3',
-            'Audio6.mp3',
-            'Audio7.mp3',
-            'Audio8.mp3'
-        ];
-        const bgFile = 'Audio9.mp3';
+        // Mapeo de archivos de audio
+        const bgMusic = new Audio('audio1.mp3'); // Música de fondo (Audio Nueve)
+        bgMusic.loop = true;
+        bgMusic.volume = 0.3; // Volumen moderado para no tapar la voz
 
-        let currentIndex = 0;
-        const bgAudio = new Audio(bgFile);
-        const guideAudio = new Audio();
+        const voiceAudios = {
+            intro: new Audio('audio9.mp3'),         // Introducción a la técnica
+            technique: new Audio('audio8.mp3'),     // Explicación de las 4 fases
+            prep: new Audio('audio7.mp3'),          // Preparación/Exhalación inicial
+            cycle1: new Audio('audio6.mp3'),        // Ciclo 1
+            cycle2: new Audio('audio5.mp3'),        // Ciclo 2
+            cycle3: new Audio('audio4.mp3'),        // Ciclo 3
+            cycle4: new Audio('audio3.mp3'),        // Ciclo 4
+            outro: new Audio('audio2.mp3')          // Cierre y retorno
+        };
 
-        bgAudio.loop = true;
-        bgAudio.volume = 0.35; // Volumen de fondo suave
+        let isRunning = false;
+        let countdownInterval;
+        let currentVoiceAudio = null;
 
-        function initPractice() {
-            const btn = document.getElementById('startButton');
-            btn.classList.add('hidden');
-            
-            document.getElementById('instructionText').innerText = "Iniciando práctica...";
-            
-            // 1. Reproducir música de fondo (Audio 9) desde el segundo 0 exacto
-            bgAudio.currentTime = 0;
-            bgAudio.play().catch(err => console.log("Error en música de fondo:", err));
+        const circle = document.getElementById('circle');
+        const instructionText = document.getElementById('instructionText');
+        const cycleText = document.getElementById('cycleText');
+        const startBtn = document.getElementById('startBtn');
 
-            // 2. Iniciar la secuencia de la guía (1 al 8)
-            playStep(0);
+        const MIN_SCALE = 1.0;
+        const MAX_SCALE = 1.8;
+
+        function toggleExercise() {
+            if (isRunning) {
+                stopExercise();
+            } else {
+                startExercise();
+            }
         }
 
-        function playStep(index) {
-            if (index >= guideFiles.length) {
-                document.getElementById('instructionText').innerText = "Práctica finalizada.";
-                document.getElementById('statusLabel').innerText = "Completado";
-                bgAudio.pause();
+        function playVoiceSequence(audioObj, text, onEndedCallback) {
+            if (!isRunning) return;
+            
+            instructionText.textContent = text;
+            currentVoiceAudio = audioObj;
+            currentVoiceAudio.currentTime = 0;
+            
+            currentVoiceAudio.play().catch(err => console.error("Error al reproducir audio de voz:", err));
+            
+            currentVoiceAudio.onended = () => {
+                if (isRunning && onEndedCallback) {
+                    onEndedCallback();
+                }
+            };
+        }
+
+        function startExercise() {
+            isRunning = true;
+            startBtn.textContent = 'Detener';
+            startBtn.style.backgroundColor = '#d9534f';
+
+            // 1. Iniciar música de fondo desde el segundo 10
+            bgMusic.currentTime = 10;
+            bgMusic.play().catch(err => console.error("Error al reproducir música de fondo:", err));
+
+            // 2. Secuencia de audios introductorios antes de los ciclos
+            playVoiceSequence(voiceAudios.intro, "Escucha la introducción...", () => {
+                playVoiceSequence(voiceAudios.technique, "Explicación de la técnica...", () => {
+                    playVoiceSequence(voiceAudios.prep, "Prepárate...", () => {
+                        runCycleSequence(1);
+                    });
+                });
+            });
+        }
+
+        function stopExercise() {
+            isRunning = false;
+            
+            // Pausar y reiniciar música de fondo
+            bgMusic.pause();
+            bgMusic.currentTime = 10;
+
+            // Pausar audio de voz actual
+            if (currentVoiceAudio) {
+                currentVoiceAudio.pause();
+                currentVoiceAudio.currentTime = 0;
+            }
+
+            clearInterval(countdownInterval);
+
+            // Restablecer interfaz de usuario
+            circle.style.transform = `scale(${MIN_SCALE})`;
+            circle.style.backgroundColor = 'var(--primary-color)';
+            circle.textContent = '--';
+            instructionText.textContent = 'Haz clic en Iniciar';
+            cycleText.textContent = 'Ciclo: 0 / 4';
+            startBtn.textContent = 'Iniciar Respiración';
+            startBtn.style.backgroundColor = 'var(--primary-color)';
+        }
+
+        function runCycleSequence(cycleNum) {
+            if (!isRunning) return;
+
+            if (cycleNum > 4) {
+                // Secuencia finalizada: Audio de cierre
+                cycleText.textContent = `Ciclo: 4 / 4`;
+                playVoiceSequence(voiceAudios.outro, "Finalizando...", () => {
+                    instructionText.textContent = '¡Excelente trabajo! Te has relajado.';
+                    stopExercise();
+                });
                 return;
             }
 
-            currentIndex = index;
-            guideAudio.src = guideFiles[currentIndex];
-            guideAudio.load();
+            cycleText.textContent = `Ciclo: ${cycleNum} / 4`;
+            const cycleAudio = voiceAudios[`cycle${cycleNum}`];
 
-            document.getElementById('statusLabel').innerText = `Paso ${currentIndex + 1} de 8`;
-
-            guideAudio.play().then(() => {
-                document.getElementById('instructionText').innerText = "Sigue la guía de respiración...";
-            }).catch(error => {
-                console.error("Error reproduciendo " + guideFiles[currentIndex], error);
-                // Si hay un error con un archivo, salta al siguiente para no bloquear la web
-                playStep(currentIndex + 1);
+            // Reproduce la guía de voz del ciclo y sincroniza el temporizador visual (4s por fase)
+            playVoiceSequence(cycleAudio, `Ciclo ${cycleNum} en curso...`, () => {
+                runCycleSequence(cycleNum + 1);
             });
 
-            // Al terminar el audio actual, salta al siguiente paso automáticamente
-            guideAudio.onended = () => {
-                playStep(currentIndex + 1);
+            // Animación sincronizada con la voz (Inhala, Sostén, Exhala, Pausa)
+            runVisualPhase('inhale', 4, '#9d8ec2', () => {
+                runVisualPhase('hold', 4, '#8b7bb0', () => {
+                    runVisualPhase('exhale', 4, '#bdae8b', () => {
+                        runVisualPhase('pause', 4, '#779ecb', () => {});
+                    });
+                });
+            });
+        }
+
+        function runVisualPhase(phaseType, totalSeconds, color, onComplete) {
+            if (!isRunning) return;
+
+            circle.style.backgroundColor = color;
+            let remainingSeconds = totalSeconds;
+
+            const updateVisuals = (currentSecond) => {
+                let elapsed = totalSeconds - currentSecond;
+                let scale = MIN_SCALE;
+
+                if (phaseType === 'inhale') {
+                    scale = MIN_SCALE + ((MAX_SCALE - MIN_SCALE) * (elapsed / totalSeconds));
+                } else if (phaseType === 'hold') {
+                    scale = MAX_SCALE;
+                } else if (phaseType === 'exhale') {
+                    scale = MAX_SCALE - ((MAX_SCALE - MIN_SCALE) * (elapsed / totalSeconds));
+                } else if (phaseType === 'pause') {
+                    scale = MIN_SCALE;
+                }
+
+                circle.style.transform = `scale(${scale})`;
+                circle.textContent = currentSecond;
             };
+
+            updateVisuals(remainingSeconds);
+
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                if (!isRunning) {
+                    clearInterval(countdownInterval);
+                    return;
+                }
+                remainingSeconds--;
+                if (remainingSeconds >= 0) {
+                    updateVisuals(remainingSeconds);
+                }
+                if (remainingSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    if (onComplete) onComplete();
+                }
+            }, 1000);
         }
     </script>
 </body>
