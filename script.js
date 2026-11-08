@@ -29,7 +29,7 @@ const audios = {
 const LARGE_PERIMETER = 800;
 const SMALL_PERIMETER = 400;
 
-// Configuración de tiempos de introducción estricta para cada ciclo
+// Configuración exacta de intro por ciclo
 const AUDIO_CONFIG = {
     4: { introFin: 3.5 },
     5: { introFin: 3.0 },
@@ -39,26 +39,19 @@ const AUDIO_CONFIG = {
 
 const BACKGROUND_START_SECOND = 4.0;
 
-// Función blindada para forzar la reproducción limpia y evitar bloqueos del navegador
-function playAudioDynamic(audioElem) {
+function playAudioSafe(audioElem) {
     return new Promise((resolve) => {
         if (!audioElem) {
             resolve();
             return;
         }
         audioElem.currentTime = 0;
-        let playPromise = audioElem.play();
-        
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                audioElem.onended = () => resolve();
-            }).catch(error => {
-                console.log("Reproducción bloqueada o error:", error);
-                resolve();
-            });
-        } else {
+        audioElem.play().then(() => {
             audioElem.onended = () => resolve();
-        }
+        }).catch(err => {
+            console.error("Error reproduciendo audio:", err);
+            resolve(); // Evita que la app se quede colgada si un audio falla
+        });
     });
 }
 
@@ -77,7 +70,7 @@ function stopAllAudios() {
     }
 }
 
-async function toggleExercise() {
+function toggleExercise() {
     if (isRunning) {
         stopExercise();
     } else {
@@ -93,24 +86,23 @@ async function startExercise() {
     skipBtn.style.display = 'block';
     isDuringIntro = true;
 
-    // Inicialización explícita del audio de fondo saltando el silencio inicial
+    // Reproducción inmediata del fondo saltando el silencio inicial
     try {
         bgAudio.currentTime = BACKGROUND_START_SECOND;
-        await bgAudio.play();
-    } catch(e) {
-        bgAudio.currentTime = 0;
-        bgAudio.play().catch(err => console.log("Fondo bloqueado:", err));
+        bgAudio.play().catch(e => console.log("Fondo bloqueado:", e));
+    } catch(err) {
+        console.log(err);
     }
 
     instructionText.textContent = "Preparación...";
-    await playAudioDynamic(audios[1]);
+    await playAudioSafe(audios[1]);
     if (!isRunning || !isDuringIntro) return;
 
-    await playAudioDynamic(audios[2]);
+    await playAudioSafe(audios[2]);
     if (!isRunning || !isDuringIntro) return;
 
     instructionText.textContent = "Toma aire profundo...";
-    await playAudioDynamic(audios[3]);
+    await playAudioSafe(audios[3]);
     if (!isRunning || !isDuringIntro) return;
 
     skipBtn.style.display = 'none';
@@ -122,9 +114,7 @@ async function startExercise() {
 
 function skipIntro() {
     if (!isDuringIntro) return;
-    audios[1].pause();
-    audios[2].pause();
-    audios[3].pause();
+    Object.values(audios).forEach(a => { if(a) { a.pause(); a.currentTime = 0; } });
     
     isDuringIntro = false;
     skipBtn.style.display = 'none';
@@ -166,7 +156,7 @@ function runNextCycle() {
 
     if (!cycleAudio) return;
 
-    // Cuadrados congelados durante la intro hablada
+    // Congelamiento absoluto inicial
     largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
     smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
     circle.textContent = '--';
@@ -177,7 +167,7 @@ function runNextCycle() {
 
     cycleAudio.currentTime = 0;
     cycleAudio.play().then(() => {
-        let totalDuration = cycleAudio.duration;
+        let totalDuration = cycleAudio.duration || 19; // Valor por defecto si duration demora en cargar
         let activeDuration = totalDuration - introOffset;
         if (activeDuration < 10) activeDuration = 16; 
 
@@ -190,7 +180,7 @@ function runNextCycle() {
 
             let elapsed = (timestamp - startTime) / 1000;
 
-            // Congelados estrictos durante la introducción de cada ciclo
+            // Mantiene quieto durante la intro hablada del ciclo
             if (elapsed < introOffset) {
                 largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
                 smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
@@ -209,7 +199,7 @@ function runNextCycle() {
             let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
             let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
 
-            // Cuadrado Grande: Avanza por fase
+            // Cuadrado Grande: Avanza por fase completa
             let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
             let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
             largeProgress.style.strokeDashoffset = largeTargetOffset;
@@ -270,7 +260,7 @@ async function finishSession() {
     instructionText.textContent = 'Regresando a tu ritmo natural...';
     cycleText.textContent = 'Completado';
     
-    await playAudioDynamic(audios[8]);
+    await playAudioSafe(audios[8]);
     
     instructionText.textContent = '¡Excelente trabajo!';
     stopExercise();
