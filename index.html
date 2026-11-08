@@ -48,7 +48,7 @@
             margin-bottom: 15px;
         }
 
-        /* Texto de instrucción ubicado arriba del cuadro */
+        /* Texto de instrucción arriba del cuadro */
         .instruction {
             font-size: 1.25rem;
             font-weight: 700;
@@ -60,15 +60,12 @@
             justify-content: center;
         }
 
-        /* Contenedor del Cuadrado de Respiración centrado por Flexbox */
+        /* Contenedor del Cuadrado de Respiración */
         .box-container {
             position: relative;
             width: 220px;
             height: 220px;
             margin: 10px auto 20px auto;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
 
         .box-svg {
@@ -98,13 +95,30 @@
             stroke-dashoffset: 760; /* Empieza vacío */
         }
 
-        /* GIF central perfectamente adaptado y visible sin cortes */
-        .center-graphic {
-            width: 150px;
-            height: 150px;
-            object-fit: contain; 
+        /* Contenedor interno infalible para centrar el GIF sin recortes */
+        .image-wrapper {
+            position: absolute;
+            top: 28px;
+            left: 28px;
+            right: 28px;
+            bottom: 28px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             z-index: 1;
-            border-radius: 12px;
+            background-color: #faf8f5;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        /* GIF perfectamente adaptado */
+        .center-graphic {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
         }
 
         .timer-info {
@@ -143,8 +157,10 @@
         <div class="instruction" id="instructionText">Listo</div>
 
         <div class="box-container">
-            <!-- GIF ubicado en la carpeta Imagenes -->
-            <img src="Imagenes/GIF1.gif" alt="Meditación" class="center-graphic" id="meditationGif">
+            <!-- Contenedor y GIF dentro de la ruta exacta -->
+            <div class="image-wrapper">
+                <img src="Imagenes/GIF1.gif" alt="Meditación" class="center-graphic" id="meditationGif">
+            </div>
             
             <svg class="box-svg" viewBox="0 0 220 220">
                 <rect class="box-bg" x="15" y="15" width="190" height="190" rx="20"/>
