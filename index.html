@@ -87,7 +87,7 @@
             transition: stroke 0.3s ease;
         }
 
-        /* Cuadrado Pequeño: 1 lado por cada número contado (1, 2, 3, 4) */
+        /* Cuadrado Pequeño: 1 lado por Segundo (1, 2, 3, 4) */
         .box-small-progress {
             fill: none;
             stroke: #ffffff;
@@ -180,7 +180,7 @@
                 <rect class="box-bg" x="20" y="20" width="200" height="200" rx="8" />
                 <rect class="box-large-progress" id="largeProgress" x="20" y="20" width="200" height="200" rx="8" />
                 
-                <!-- Cuadrado Pequeño: 1 lado por Número (1, 2, 3, 4) -->
+                <!-- Cuadrado Pequeño: 1 lado por Segundo (1, 2, 3, 4) -->
                 <rect class="box-bg" x="70" y="70" width="100" height="100" rx="4" />
                 <rect class="box-small-progress" id="smallProgress" x="70" y="70" width="100" height="100" rx="4" />
             </svg>
@@ -237,13 +237,8 @@
         const LARGE_PERIMETER = 800;
         const SMALL_PERIMETER = 400;
 
-        // Tiempos exactos de inicio del "Inhala" (segundos de silencio/introducción en el audio)
-        const INTRO_VOICE_DELAYS = {
-            4: 2.2,
-            5: 2.2,
-            6: 2.2,
-            7: 2.2
-        };
+        // Tiempo exacto (en segundos) en que la voz termina de decir "Iniciamos..." y arranca el primer "Inhala"
+        const VOICE_START_OFFSET = 2.2;
 
         function initAmbientAudio() {
             if (!audioCtx) {
@@ -259,7 +254,7 @@
                     ambientGain = audioCtx.createGain();
 
                     osc1.type = 'sine';
-                    osc1.frequency.setValueAtTime(174, audioCtx.currentTime); // Frecuencia Solfeggio relajante (174 Hz)
+                    osc1.frequency.setValueAtTime(174, audioCtx.currentTime); // 174 Hz Solfeggio relax
                     osc2.type = 'triangle';
                     osc2.frequency.setValueAtTime(285, audioCtx.currentTime);
 
@@ -394,10 +389,11 @@
 
             if (!cycleAudio) return;
 
-            let introDelay = INTRO_VOICE_DELAYS[audioIndex] || 2.2;
+            // Restablecer cuadrados completamente a cero y quietos al iniciar el audio del ciclo
             largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
             smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
             circle.textContent = '--';
+            instructionText.textContent = "Escucha la guía...";
 
             cycleAudio.currentTime = 0;
             cycleAudio.play().catch(e => console.log(e));
@@ -407,19 +403,18 @@
 
                 let currentTime = cycleAudio.currentTime;
 
-                // MANTENER INMÓVIL MIENTRAS DICE "INICIAMOS..."
-                if (currentTime < introDelay) {
+                // MANTENER AMBOS CUADROS COMPLETAMENTE QUIETOS DURANTE "INICIAMOS..."
+                if (currentTime < VOICE_START_OFFSET) {
                     largeProgress.style.strokeDashoffset = LARGE_PERIMETER;
                     smallProgress.style.strokeDashoffset = SMALL_PERIMETER;
-                    instructionText.textContent = "Preparando ciclo...";
                     circle.textContent = '--';
                     return;
                 }
 
-                // CALCULAR TIEMPO REAL DE LA LOCUCIÓN ACTIVA
-                let activeTime = currentTime - introDelay;
-                let duration = (cycleAudio.duration && !isNaN(cycleAudio.duration)) ? cycleAudio.duration : (introDelay + 16);
-                let totalActiveDuration = duration - introDelay;
+                // A PARTIR DE AQUÍ ARRANCA EL MOVIMIENTO REAL SINCRONIZADO
+                let activeTime = currentTime - VOICE_START_OFFSET;
+                let duration = (cycleAudio.duration && !isNaN(cycleAudio.duration)) ? cycleAudio.duration : (VOICE_START_OFFSET + 16);
+                let totalActiveDuration = duration - VOICE_START_OFFSET;
 
                 let phaseDuration = totalActiveDuration / 4;
                 let currentPhaseIndex = Math.floor(activeTime / phaseDuration);
@@ -428,12 +423,12 @@
                 let phaseElapsed = activeTime - (currentPhaseIndex * phaseDuration);
                 let phaseProgress = Math.min(phaseElapsed / phaseDuration, 1);
 
-                // DIBUJAR CUADRADO GRANDE (1 LADO POR FASE)
+                // CUADRADO GRANDE: 1 lado por cada fase exacta
                 let largeStartOffset = LARGE_PERIMETER - (currentPhaseIndex * 200);
                 let largeTargetOffset = largeStartOffset - (200 * phaseProgress);
                 largeProgress.style.strokeDashoffset = largeTargetOffset;
 
-                // DIBUJAR CUADRADO PEQUEÑO (1 LADO POR CADA NÚMERO HABLADO: 1, 2, 3, 4)
+                // CUADRADO PEQUEÑO: 1 lado exacto por cada segundo contado (1, 2, 3, 4)
                 let secondDuration = phaseDuration / 4;
                 let currentSecond = Math.min(Math.floor(phaseElapsed / secondDuration) + 1, 4);
                 circle.textContent = currentSecond;
@@ -442,7 +437,7 @@
                 let smallOffset = SMALL_PERIMETER - (((currentSecond - 1) * 100) + (100 * secondProgress));
                 smallProgress.style.strokeDashoffset = smallOffset;
 
-                // CAMBIAR TEXTO Y COLOR SEGÚN LA FASE EXACTA DE LA VOZ
+                // Actualizar textos y colores según la fase precisa
                 if (currentPhaseIndex === 0) {
                     instructionText.textContent = "1. INHALA por la nariz";
                     largeProgress.style.stroke = "var(--accent-inhale)";
