@@ -45,7 +45,19 @@
             font-size: 0.95rem;
             color: #666;
             margin-top: 0;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+        }
+
+        /* Texto de instrucción ubicado arriba del cuadro para no tapar el GIF */
+        .instruction {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         /* Contenedor del Cuadrado de Respiración */
@@ -53,7 +65,7 @@
             position: relative;
             width: 220px;
             height: 220px;
-            margin: 20px auto;
+            margin: 10px auto 20px auto;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -67,7 +79,7 @@
             height: 220px;
             transform: rotate(-90deg); /* Empieza arriba a la izquierda */
             pointer-events: none;
-            z-index: 3;
+            z-index: 2;
         }
 
         .box-bg {
@@ -86,34 +98,14 @@
             stroke-dashoffset: 760; /* Empieza vacío */
         }
 
-        /* GIF central estático y limpio */
+        /* GIF central completamente visible y despejado */
         .center-graphic {
             position: absolute;
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
+            width: 160px;
+            height: 160px;
+            border-radius: 20px;
             object-fit: cover;
-            opacity: 0.95;
             z-index: 1;
-        }
-
-        .box-content {
-            position: relative;
-            z-index: 2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.85);
-            width: 130px;
-            height: 130px;
-            border-radius: 50%;
-        }
-
-        .instruction {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--primary-color);
-            text-align: center;
         }
 
         .timer-info {
@@ -148,6 +140,9 @@
         <h1>RESPIRACIÓN CUADRADA</h1>
         <p class="subtitle">Sigue el ritmo de la armonía interior</p>
 
+        <!-- Texto de instrucción arriba del cuadro -->
+        <div class="instruction" id="instructionText">Listo</div>
+
         <div class="box-container">
             <!-- GIF ubicado en la carpeta Imagenes -->
             <img src="Imagenes/GIF1.gif" alt="Meditación" class="center-graphic" id="meditationGif">
@@ -156,10 +151,6 @@
                 <rect class="box-bg" x="15" y="15" width="190" height="190" rx="20"/>
                 <rect id="boxProgress" class="box-progress" x="15" y="15" width="190" height="190" rx="20"/>
             </svg>
-
-            <div class="box-content">
-                <div class="instruction" id="instructionText">Listo</div>
-            </div>
         </div>
 
         <div class="timer-info" id="cycleText">Ciclo: 0 / 4</div>
@@ -216,7 +207,7 @@
             currentVoiceAudio = audioObj;
             currentVoiceAudio.currentTime = 0;
             
-            // Si es el Audio 1 (intro), recortamos el silencio excesivo inicial dejando solo 2 segundos
+            // Si es el Audio 1 (intro), recortamos el exceso inicial dejando solo 2 segundos
             if (audioObj === voiceAudios.intro) {
                 currentVoiceAudio.currentTime = 2.0;
             }
@@ -310,28 +301,27 @@
 
             cycleAudio.play().catch(err => console.warn("Error ciclo audio:", err));
 
-            // Sincronización milimétrica limpia y secuencial guiada por el audio real
+            // Sincronización milimétrica estricta y sincronizada con el audio real de cada ciclo
             function syncWithAudio() {
                 if (!isRunning) return;
 
                 const t = cycleAudio.currentTime;
                 const duration = cycleAudio.duration || 16;
                 
-                // El ciclo 1 dice "Iniciamos, Ciclo 1..." por lo que su intro es más larga (~5.2s). Los demás ciclos usan ~3.0s.
+                // Tiempo de espera exacto antes de que empiece "Inhala" en cada ciclo
                 const introOffset = (cycleNum === 1) ? 5.2 : 3.0; 
-                const breathingDuration = duration - introOffset;
+                const breathingDuration = Math.max(1, duration - introOffset);
 
                 if (t < introOffset) {
-                    // Durante la presentación ("Iniciamos, Ciclo 1..."), el cuadrado se mantiene quieto y vacío
                     boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
                     instructionText.textContent = `Ciclo ${cycleNum}`;
                 } else if (t >= introOffset && t <= duration) {
                     const elapsedBreathing = t - introOffset;
-                    const progress = Math.min(1, elapsedBreathing / breathingDuration);
+                    const progress = Math.min(1, Math.max(0, elapsedBreathing / breathingDuration));
                     
-                    // Dividir estrictamente en 4 fases secuenciales (0: Inhala, 1: Sostén, 2: Exhala, 3: Vacío) sin superposiciones
+                    // División estricta en 4 fases secuenciales sin superposiciones
                     const phaseIndex = Math.min(3, Math.floor(progress * 4));
-                    const phaseProgress = (progress * 4) - phaseIndex; // 0.0 a 1.0 dentro de la fase actual
+                    const phaseProgress = Math.min(1, Math.max(0, (progress * 4) - phaseIndex));
 
                     let targetOffset = TOTAL_PERIMETER;
 
