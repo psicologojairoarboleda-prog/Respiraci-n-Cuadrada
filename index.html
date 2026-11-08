@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Respiración Guiada - Calm</title>
+    <style>
+        :root {
+            --bg-color: #f4f0ea;
+            --card-bg: #ffffff;
+            --primary-color: #8b7bb0;
+            --text-color: #2c2c2c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        p.subtitle {
+            font-size: 0.95rem;
+            color: #666;
+            margin-top: 0;
+            margin-bottom: 30px;
+        }
+
+        .circle-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 220px;
+            margin: 20px 0;
+        }
+
+        .breathing-circle {
+            width: 110px;
+            height: 110px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 2.2rem;
+            box-shadow: 0 0 20px rgba(139, 123, 176, 0.3);
+            transform: scale(1);
+            /* Transición suave de 1 segundo para sincronizar exactamente con cada tic del contador */
+            transition: transform 1s linear, background-color 0.5s ease;
+        }
+
+        .instruction {
+            font-size: 1.3rem;
+            font-weight: 600;
+            min-height: 30px;
+            margin: 15px 0;
+        }
+
+        .timer-info {
+            font-size: 0.9rem;
+            color: #777;
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>EJERCICIO: 4-7-8</h1>
+        <p class="subtitle">Respira para calmar tu cuerpo y mente</p>
+
+        <div class="circle-container">
+            <div class="breathing-circle" id="circle">--</div>
+        </div>
+
+        <div class="instruction" id="instructionText">Haz clic en Iniciar</div>
+        <div class="timer-info" id="cycleText">Ciclo: 0 / 3</div>
+
+        <button class="btn" id="startBtn" onclick="toggleExercise()">Iniciar Respiración</button>
+    </div>
+
+    <script>
+        let isRunning = false;
+        let currentCycle = 0;
+        const maxCycles = 3;
+        let countdownInterval;
+
+        const circle = document.getElementById('circle');
+        const instructionText = document.getElementById('instructionText');
+        const cycleText = document.getElementById('cycleText');
+        const startBtn = document.getElementById('startBtn');
+
+        // Escalas de tamaño del círculo
+        const MIN_SCALE = 1.0;
+        const MAX_SCALE = 1.8;
+
+        function toggleExercise() {
+            if (isRunning) {
+                stopExercise();
+            } else {
+                startExercise();
+            }
+        }
+
+        function startExercise() {
+            isRunning = true;
+            currentCycle = 0;
+            startBtn.textContent = 'Detener';
+            startBtn.style.backgroundColor = '#d9534f';
+            runNextCycle();
+        }
+
+        function stopExercise() {
+            isRunning = false;
+            clearInterval(countdownInterval);
+            circle.style.transform = `scale(${MIN_SCALE})`;
+            circle.style.backgroundColor = 'var(--primary-color)';
+            circle.textContent = '--';
+            instructionText.textContent = 'Haz clic en Iniciar';
+            cycleText.textContent = 'Ciclo: 0 / 3';
+            startBtn.textContent = 'Iniciar Respiración';
+            startBtn.style.backgroundColor = 'var(--primary-color)';
+        }
+
+        function runNextCycle() {
+            if (!isRunning) return;
+
+            currentCycle++;
+            if (currentCycle > maxCycles) {
+                instructionText.textContent = '¡Excelente trabajo! Te has relajado.';
+                stopExercise();
+                return;
+            }
+
+            cycleText.textContent = `Ciclo: ${currentCycle} / ${maxCycles}`;
+
+            // 1. INHALAR (4s): Crece progresivamente en 4 pasos
+            startPhase('1. INHALA por la nariz...', 4, '#9d8ec2', 'inhale', () => {
+                // 2. SOSTENER (7s): Se queda grande
+                startPhase('2. SOSTÉN el aire...', 7, '#8b7bb0', 'hold', () => {
+                    // 3. EXHALAR (8s): Se encoge progresivamente en 8 pasos
+                    startPhase('3. EXHALA lentamente...', 8, '#bdae8b', 'exhale', () => {
+                        runNextCycle();
+                    });
+                });
+            });
+        }
+
+        function startPhase(text, totalSeconds, color, phaseType, onComplete) {
+            if (!isRunning) return;
+
+            instructionText.textContent = text;
+            circle.style.backgroundColor = color;
+
+            let remainingSeconds = totalSeconds;
+            
+            // Función para calcular la escala exacta segundo a segundo
+            const updateVisuals = (currentSecond) => {
+                let elapsed = totalSeconds - currentSecond;
+                let scale = MIN_SCALE;
+
+                if (phaseType === 'inhale') {
+                    // Crece gradualmente de MIN a MAX
+                    scale = MIN_SCALE + ((MAX_SCALE - MIN_SCALE) * (elapsed / totalSeconds));
+                } else if (phaseType === 'hold') {
+                    // Se mantiene grande
+                    scale = MAX_SCALE;
+                } else if (phaseType === 'exhale') {
+                    // Se encoge gradualmente de MAX a MIN
+                    scale = MAX_SCALE - ((MAX_SCALE - MIN_SCALE) * (elapsed / totalSeconds));
+                }
+
+                circle.style.transform = `scale(${scale})`;
+                circle.textContent = currentSecond;
+            };
+
+            // Ejecutar el primer paso inmediatamente
+            updateVisuals(remainingSeconds);
+
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                remainingSeconds--;
+                if (remainingSeconds >= 0) {
+                    updateVisuals(remainingSeconds);
+                }
+                if (remainingSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    onComplete();
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
