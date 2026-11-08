@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Respiración Guiada - Calm</title>
+    <title>Respiración Cuadrada - Calm</title>
     <style>
         :root {
             --bg-color: #f4f0ea;
@@ -45,40 +45,63 @@
             font-size: 0.95rem;
             color: #666;
             margin-top: 0;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
-        .circle-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 220px;
-            margin: 20px 0;
+        /* Contenedor del Cuadrado de Respiración */
+        .box-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
         }
 
-        .breathing-circle {
-            width: 110px;
-            height: 110px;
-            background-color: var(--primary-color);
-            border-radius: 50%;
+        .box-svg {
+            width: 200px;
+            height: 200px;
+            transform: rotate(-90deg); /* Empieza arriba a la izquierda */
+        }
+
+        .box-bg {
+            fill: none;
+            stroke: #eee;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+
+        .box-progress {
+            fill: none;
+            stroke: var(--primary-color);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 800; /* Perímetro total del cuadrado (200x4) */
+            stroke-dashoffset: 800; /* Empieza completamente vacío */
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        .box-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            color: white;
-            font-weight: bold;
-            font-size: 1.8rem;
-            box-shadow: 0 0 20px rgba(139, 123, 176, 0.3);
-            transform: scale(1);
         }
 
         .instruction {
             font-size: 1.1rem;
             font-weight: 600;
-            min-height: 45px;
-            margin: 15px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            min-height: 30px;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        .counter {
+            font-size: 2.2rem;
+            font-weight: bold;
         }
 
         .timer-info {
@@ -103,7 +126,7 @@
 
         .btn-skip {
             background-color: #a0a0a0;
-            display: none; /* Oculto por defecto */
+            display: none;
         }
     </style>
 </head>
@@ -111,13 +134,21 @@
 
     <div class="container">
         <h1>RESPIRACIÓN CUADRADA</h1>
-        <p class="subtitle">Respira para calmar tu cuerpo y mente</p>
+        <p class="subtitle">Cada lado del cuadro es una fase de 4 segundos</p>
 
-        <div class="circle-container">
-            <div class="breathing-circle" id="circle">--</div>
+        <div class="box-container">
+            <svg class="box-svg" viewBox="0 0 200 200">
+                <!-- Marco de fondo gris -->
+                <rect class="box-bg" x="10" y="10" width="180" height="180" rx="15"/>
+                <!-- Marco que se va llenando dinámicamente -->
+                <rect id="boxProgress" class="box-progress" x="10" y="10" width="180" height="180" rx="15"/>
+            </svg>
+            <div class="box-content">
+                <div class="instruction" id="instructionText">Haz clic en Iniciar</div>
+                <div class="counter" id="counterText">--</div>
+            </div>
         </div>
 
-        <div class="instruction" id="instructionText">Haz clic en Iniciar</div>
         <div class="timer-info" id="cycleText">Ciclo: 0 / 4</div>
 
         <button class="btn" id="startBtn" onclick="toggleExercise()">Iniciar Respiración</button>
@@ -144,16 +175,20 @@
 
         let isRunning = false;
         let currentVoiceAudio = null;
-        let currentTimeout = null;
+        let currentTimer = null;
+        let phaseInterval = null;
 
-        const circle = document.getElementById('circle');
         const instructionText = document.getElementById('instructionText');
+        const counterText = document.getElementById('counterText');
         const cycleText = document.getElementById('cycleText');
         const startBtn = document.getElementById('startBtn');
         const skipBtn = document.getElementById('skipBtn');
+        const boxProgress = document.getElementById('boxProgress');
 
-        const MIN_SCALE = 1.0;
-        const MAX_SCALE = 1.8;
+        // Perímetro total del rectángulo SVG (180 * 4 = 720)
+        const TOTAL_PERIMETER = 720;
+        boxProgress.style.strokeDasharray = TOTAL_PERIMETER;
+        boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
 
         function toggleExercise() {
             if (isRunning) {
@@ -163,11 +198,11 @@
             }
         }
 
-        // Reproduce una pista de voz y avanza al terminar
         function playVoiceSequence(audioObj, text, onEndedCallback) {
             if (!isRunning) return;
             
             instructionText.textContent = text;
+            counterText.textContent = "--";
             currentVoiceAudio = audioObj;
             currentVoiceAudio.currentTime = 0;
             
@@ -187,7 +222,7 @@
             isRunning = true;
             startBtn.textContent = 'Detener';
             startBtn.style.backgroundColor = '#d9534f';
-            skipBtn.style.display = 'block'; // Mostrar botón saltar intro
+            skipBtn.style.display = 'block';
 
             // Iniciar música de fondo en el segundo 10
             bgMusic.currentTime = 10;
@@ -197,29 +232,26 @@
             playVoiceSequence(voiceAudios.intro, "Escucha las indicaciones...", () => {
                 playVoiceSequence(voiceAudios.technique, "Técnica de respiración...", () => {
                     playVoiceSequence(voiceAudios.prep, "Prepárate...", () => {
-                        skipBtn.style.display = 'none'; // Ocultar saltar intro al iniciar los ciclos
+                        skipBtn.style.display = 'none';
                         runCycleSequence(1);
                     });
                 });
             });
         }
 
-        // Función para el botón "Saltar Intro"
         function skipIntro() {
             if (!isRunning) return;
 
-            // Detener audio de intro actual
             if (currentVoiceAudio) {
                 currentVoiceAudio.pause();
                 currentVoiceAudio.currentTime = 0;
                 currentVoiceAudio.onended = null;
             }
-            if (currentTimeout) {
-                clearTimeout(currentTimeout);
-            }
+            if (currentTimer) clearTimeout(currentTimer);
+            if (phaseInterval) clearInterval(phaseInterval);
 
             skipBtn.style.display = 'none';
-            runCycleSequence(1); // Saltar directo al ciclo 1
+            runCycleSequence(1);
         }
 
         function stopExercise() {
@@ -233,30 +265,28 @@
                 currentVoiceAudio.currentTime = 0;
                 currentVoiceAudio.onended = null;
             }
-            if (currentTimeout) {
-                clearTimeout(currentTimeout);
-            }
+            if (currentTimer) clearTimeout(currentTimer);
+            if (phaseInterval) clearInterval(phaseInterval);
 
             // Resetear interfaz
-            circle.style.transition = 'none';
-            circle.style.transform = `scale(${MIN_SCALE})`;
-            circle.style.backgroundColor = 'var(--primary-color)';
-            circle.textContent = '--';
+            boxProgress.style.transition = 'none';
+            boxProgress.style.strokeDashoffset = TOTAL_PERIMETER;
             instructionText.textContent = 'Haz clic en Iniciar';
+            counterText.textContent = '--';
             cycleText.textContent = 'Ciclo: 0 / 4';
             startBtn.textContent = 'Iniciar Respiración';
             startBtn.style.backgroundColor = 'var(--primary-color)';
             skipBtn.style.display = 'none';
         }
 
-        // Ejecuta los ciclos adaptándose exactamente a la duración del audio de voz correspondiente
         function runCycleSequence(cycleNum) {
             if (!isRunning) return;
 
             if (cycleNum > 4) {
                 cycleText.textContent = `Ciclo: 4 / 4`;
                 playVoiceSequence(voiceAudios.outro, "Finalizando...", () => {
-                    instructionText.textContent = '¡Excelente trabajo! Te has relajado.';
+                    instructionText.textContent = '¡Excelente trabajo!';
+                    counterText.textContent = '✨';
                     stopExercise();
                 });
                 return;
@@ -267,38 +297,17 @@
             currentVoiceAudio = cycleAudio;
             currentVoiceAudio.currentTime = 0;
 
-            instructionText.textContent = `Ciclo ${cycleNum} en curso...`;
+            instructionText.textContent = `Ciclo ${cycleNum}`;
+            counterText.textContent = "...";
 
-            // Reproducir el audio del ciclo y sincronizar las animaciones con su duración real
-            cycleAudio.play().then(() => {
-                const totalDuration = cycleAudio.duration; // Duración real del archivo de voz
-                if (isNaN(totalDuration) || totalDuration <= 0) {
-                    fallbackCycle(cycleNum);
-                    return;
-                }
+            cycleAudio.play().catch(err => console.warn("Error ciclo audio:", err));
 
-                // La respiración cuadrada divide el audio en 4 partes iguales exactas
-                const phaseDuration = totalDuration / 4; 
-
-                // Fase 1: Inhalar
-                setPhaseAnimation('Inhala por la nariz...', '#9d8ec2', MAX_SCALE, phaseDuration, () => {
-                    if (!isRunning) return;
-                    // Fase 2: Sostener
-                    setPhaseAnimation('Sostén el aire...', '#8b7bb0', MAX_SCALE, phaseDuration, () => {
-                        if (!isRunning) return;
-                        // Fase 3: Exhalar
-                        setPhaseAnimation('Exhala lentamente...', '#bdae8b', MIN_SCALE, phaseDuration, () => {
-                            if (!isRunning) return;
-                            // Fase 4: Pausa / Vacío
-                            setPhaseAnimation('Mantén en vacío...', '#779ecb', MIN_SCALE, phaseDuration, () => {});
-                        });
-                    });
-                });
-
-            }).catch(err => {
-                console.warn("Error al reproducir audio del ciclo:", err);
-                fallbackCycle(cycleNum);
-            });
+            // Sincronización exacta con el audio del ciclo:
+            // 1. Esperamos 3.5 segundos para que termine la intro hablada del ciclo ("Ciclo 1...") y empiece el conteo de la voz.
+            currentTimer = setTimeout(() => {
+                if (!isRunning) return;
+                startBoxBreathingPhases();
+            }, 3500);
 
             cycleAudio.onended = () => {
                 if (isRunning) {
@@ -307,37 +316,48 @@
             };
         }
 
-        // Controla la transición suave de tamaño y color sincronizada con la fase
-        function setPhaseAnimation(text, color, targetScale, durationSeconds, onPhaseComplete) {
+        // Ejecuta las 4 fases del cuadrado compuestas de 4 segundos cada una
+        function startBoxBreathingPhases() {
+            if (!isRunning) return;
+
+            // Fase 1: INHALAR (Lado Superior - Offset de 720 a 540)
+            runPhase("Inhala", 720, 540, () => {
+                if (!isRunning) return;
+                // Fase 2: SOSTENER (Lado Derecho - Offset de 540 a 360)
+                runPhase("Sostén", 540, 360, () => {
+                    if (!isRunning) return;
+                    // Fase 3: EXHALAR (Lado Inferior - Offset de 360 a 180)
+                    runPhase("Exhala", 360, 180, () => {
+                        if (!isRunning) return;
+                        // Fase 4: VACÍO / PAUSA (Lado Izquierdo - Offset de 180 a 0)
+                        runPhase("Vacío", 180, 0, () => {});
+                    });
+                });
+            });
+        }
+
+        function runPhase(text, startOffset, targetOffset, onComplete) {
             if (!isRunning) return;
 
             instructionText.textContent = text;
-            circle.style.backgroundColor = color;
-            
-            // Aplicar la transición de CSS exactamente con la duración de esta fase del audio
-            circle.style.transition = `transform ${durationSeconds}s linear, background-color 0.5s ease`;
-            circle.style.transform = `scale(${targetScale})`;
+            let secondsLeft = 4;
+            counterText.textContent = secondsLeft;
 
-            // Contador visual dinámico dentro del círculo
-            let remaining = Math.ceil(durationSeconds);
-            circle.textContent = remaining;
+            // Animar el trazo del lado del cuadro durante 4 segundos exactos
+            boxProgress.style.transition = 'stroke-dashoffset 4s linear';
+            boxProgress.style.strokeDashoffset = targetOffset;
 
-            const interval = setInterval(() => {
-                remaining--;
-                if (remaining > 0 && isRunning) {
-                    circle.textContent = remaining;
+            phaseInterval = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft > 0 && isRunning) {
+                    counterText.textContent = secondsLeft;
                 }
             }, 1000);
 
-            currentTimeout = setTimeout(() => {
-                clearInterval(interval);
-                if (onPhaseComplete) onPhaseComplete();
-            }, durationSeconds * 1000);
-        }
-
-        function fallbackCycle(cycleNum) {
-            // Plan de respaldo por si el navegador bloquea la lectura de duración del audio
-            runCycleSequence(cycleNum + 1);
+            currentTimer = setTimeout(() => {
+                clearInterval(phaseInterval);
+                if (onComplete) onComplete();
+            }, 4000);
         }
     </script>
 </body>
