@@ -48,7 +48,7 @@
             margin-bottom: 15px;
         }
 
-        /* Texto de instrucción arriba del cuadro */
+        /* Texto de instrucción ubicado arriba del cuadro */
         .instruction {
             font-size: 1.25rem;
             font-weight: 700;
@@ -98,17 +98,20 @@
             stroke-dashoffset: 760; /* Empieza vacío */
         }
 
-        /* Imagen/GIF central integrado de forma transparente y centrado */
+        /* Imagen/GIF central más grande, sin marcos y con bordes difuminados (integrado) */
         .center-graphic {
             position: absolute;
-            width: 160px;
-            height: 160px;
+            width: 205px;
+            height: 205px;
             object-fit: contain;
             z-index: 1;
-            mix-blend-mode: multiply; /* Fusiona el fondo de la imagen dinámicamente */
+            mix-blend-mode: multiply;
             display: none; 
             transition: opacity 0.3s ease;
             opacity: 0;
+            /* Difuminado suave en los bordes para integrarlo sin marco */
+            -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
+            mask-image: radial-gradient(circle, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
         }
 
         .center-graphic.active {
@@ -152,7 +155,7 @@
         <div class="instruction" id="instructionText">Listo</div>
 
         <div class="box-container">
-            <!-- Imagen central única (cambia dinámicamente entre GIF.gif y GIF1.gif) -->
+            <!-- Imagen central única (dinámica entre GIF.gif y GIF1.gif) -->
             <img src="" alt="Meditación" class="center-graphic" id="meditationGif">
             
             <svg class="box-svg" viewBox="0 0 220 220">
@@ -239,7 +242,7 @@
             startBtn.style.backgroundColor = '#d9534f';
             skipBtn.style.display = 'block';
 
-            // Mostrar GIF.gif durante la preparación/intro
+            // Mostrar GIF.gif (preparación) durante toda la intro y preparación
             meditationGif.src = 'Imagenes/GIF.gif';
             meditationGif.classList.add('active');
 
@@ -300,7 +303,7 @@
         function runCycleSequence(cycleNum) {
             if (!isRunning) return;
 
-            // Cambiar a GIF1.gif al iniciar los ciclos de respiración
+            // Cambiar a GIF1.gif (respiración) justo al iniciar el ciclo 1 (o saltar intro)
             meditationGif.src = 'Imagenes/GIF1.gif';
             meditationGif.classList.add('active');
 
@@ -324,7 +327,7 @@
 
             cycleAudio.play().catch(err => console.warn("Error ciclo audio:", err));
 
-            // Sincronización milimétrica con la duración del audio
+            // Sincronización milimétrica con la duración del audio y compensación de desfases
             function syncWithAudio() {
                 if (!isRunning || currentVoiceAudio !== cycleAudio) return;
 
