@@ -3,151 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prueba de Sonido - Respiración</title>
+    <title>Guía de Respiración Cuadrada | Práctica Guiada</title>
     <style>
+        :root {
+            --bg-color: #f7f5f0;
+            --card-bg: #ffffff;
+            --text-color: #4a453f;
+            --accent-color: #8c8275;
+            --accent-light: #d6cfc7;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f0ea;
-            color: #2c2c2c;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
+
         .container {
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background-color: var(--card-bg);
             max-width: 500px;
-            width: 100%;
+            width: 90%;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px var(--shadow-color);
             text-align: center;
+            box-sizing: border-box;
         }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        p.subtitle {
+            font-size: 0.95rem;
+            color: var(--accent-color);
+            margin-bottom: 30px;
+        }
+
+        .breathing-circle {
+            width: 180px;
+            height: 180px;
+            border: 4px solid var(--accent-light);
+            border-radius: 50%;
+            margin: 0 auto 30px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            font-weight: 500;
+            transition: all 1s ease;
+            position: relative;
+        }
+
+        .instructions-box {
+            background-color: var(--bg-color);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            min-height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.05rem;
+            font-weight: 400;
+        }
+
         button {
-            background-color: #8b7bb0;
-            color: white;
+            background-color: var(--text-color);
+            color: #ffffff;
             border: none;
-            padding: 15px 30px;
-            font-size: 1.1rem;
-            font-weight: bold;
+            padding: 14px 32px;
+            font-size: 1rem;
             border-radius: 30px;
             cursor: pointer;
-            margin: 10px 0;
-            width: 100%;
+            transition: opacity 0.2s ease, transform 0.1s ease;
         }
+
         button:hover {
-            background-color: #726298;
+            opacity: 0.9;
         }
-        .audio-item {
-            margin: 10px 0;
-            text-align: left;
-            font-size: 0.9rem;
+
+        button:active {
+            transform: scale(0.98);
         }
-        audio {
-            width: 100%;
-            margin-top: 5px;
+
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Panel de Diagnóstico de Sonido</h1>
-        <p>Si los audios funcionan aquí, el problema de reproducción estará completamente resuelto.</p>
+        <h1>Respiración Cuadrada</h1>
+        <p class="subtitle">Encuentra tu calma y presencia</p>
 
-        <button onclick="probarSecuencia()">▶️ Probar Reproducción Secuencial</button>
-        <button onclick="detenerTodo()" style="background-color: #d9534f;">⏹️ Detener Todo</button>
-
-        <p id="estado" style="font-weight: bold; color: #5c9ead; margin: 15px 0;">Estado: En espera</p>
-
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
-
-        <h3>Controles individuales (para verificar archivos):</h3>
-        
-        <div class="audio-item">
-            <label>Fondo (Audio9_2.mp3):</label>
-            <audio id="bgAudio" src="Audios/Audio9_2.mp3" controls loop></audio>
+        <div class="instructions-box" id="instructionText">
+            Presiona el botón para iniciar la práctica de respiración.
         </div>
 
-        <div class="audio-item">
-            <label>Audio 1_2:</label>
-            <audio src="Audios/Audio1_2.mp3" controls></audio>
+        <div class="breathing-circle" id="circle">
+            <span id="statusLabel">Listo</span>
         </div>
 
-        <div class="audio-item">
-            <label>Audio 4_2 (Primer Ciclo):</label>
-            <audio src="Audios/Audio4_2.mp3" controls></audio>
-        </div>
+        <button id="startButton" onclick="startPractice()">Iniciar Práctica</button>
     </div>
 
-    <script>
-        const bgAudio = document.getElementById('bgAudio');
-        bgAudio.volume = 0.12;
+    <!-- Elemento de Audio de Fondo (Audio 9) -->
+    <!-- Nota: Asegúrate de que la ruta de la carpeta en tu repositorio sea correcta -->
+    <audio id="bgMusic" src="audio/Audio9.mp3" preload="auto" loop></audio>
 
-        const audiosSecuencia = [
-            document.getElementById('audio1') || new Audio('Audios/Audio1_2.mp3'),
-            document.getElementById('audio2') || new Audio('Audios/Audio2_2.mp3'),
-            document.getElementById('audio3') || new Audio('Audios/Audio3_2.mp3'),
-            document.getElementById('audio4') || new Audio('Audios/Audio4_2.mp3')
+    <script>
+        const bgMusic = document.getElementById('bgMusic');
+        const startButton = document.getElementById('startButton');
+        const instructionText = document.getElementById('instructionText');
+        const statusLabel = document.getElementById('statusLabel');
+        const circle = document.getElementById('circle');
+
+        // Lista de audios secuenciales del 1 al 8
+        const guideAudioFiles = [
+            'audio/Audio1.mp3',
+            'audio/Audio2.mp3',
+            'audio/Audio3.mp3',
+            'audio/Audio4.mp3',
+            'audio/Audio5.mp3',
+            'audio/Audio6.mp3',
+            'audio/Audio7.mp3',
+            'audio/Audio8.mp3'
         ];
 
-        let indexActual = 0;
-        let reproduciendo = false;
+        let currentAudioIndex = 0;
+        let activeGuideAudio = null;
 
-        async function probarSecuencia() {
-            if (reproduciendo) return;
-            reproduciendo = true;
-            
-            document.getElementById('estado').textContent = "Estado: Iniciando música de fondo...";
-            
-            try {
-                // Iniciar fondo saltando el silencio inicial (ej. segundo 4)
-                bgAudio.currentTime = 4.0;
-                await bgAudio.play();
-            } catch (e) {
-                console.log("Error en fondo:", e);
-            }
+        function startPractice() {
+            // Ocultar botón y preparar interfaz
+            startButton.classList.add('hidden');
+            instructionText.innerText = "Comenzando ejercicio de respiración...";
 
-            reproducirSiguienteAudio();
-        }
-
-        function reproducirSiguienteAudio() {
-            if (!reproduciendo) return;
-
-            if (indexActual < audiosSecuencia.length) {
-                let audio = audiosSecuencia[indexActual];
-                document.getElementById('estado').textContent = `Estado: Reproduciendo Audio ${indexActual + 1}_2.mp3`;
-                
-                audio.currentTime = 0;
-                audio.play().then(() => {
-                    audio.onended = () => {
-                        indexActual++;
-                        reproducirSiguienteAudio();
-                    };
-                }).catch(err => {
-                    document.getElementById('estado').textContent = `Error en Audio ${indexActual + 1}: Revisa la ruta`;
-                    console.error(err);
-                });
-            } else {
-                document.getElementById('estado').textContent = "Estado: Secuencia de prueba finalizada con éxito.";
-                reproduciendo = false;
-            }
-        }
-
-        function detenerTodo() {
-            reproduciendo = false;
-            bgAudio.pause();
-            bgAudio.currentTime = 0;
-            audiosSecuencia.forEach(a => {
-                a.pause();
-                a.currentTime = 0;
-                a.onended = null;
+            // 1. Iniciar la música de fondo (Audio 9) desde el segundo 0 exacto
+            bgMusic.currentTime = 0;
+            bgMusic.play().catch(error => {
+                console.log("Reproducción de fondo bloqueada o error:", error);
             });
-            indexActual = 0;
-            document.getElementById('estado').textContent = "Estado: Detenido manualmente.";
+
+            // 2. Iniciar la secuencia de audios guías de 1 a 8
+            playNextGuideAudio();
+        }
+
+        function playNextGuideAudio() {
+            if (currentAudioIndex < guideAudioFiles.length) {
+                activeGuideAudio = new Audio(guideAudioFiles[currentAudioIndex]);
+                
+                activeGuideAudio.play().then(() => {
+                    statusLabel.innerText = `Guía ${currentAudioIndex + 1}/8`;
+                }).catch(err => {
+                    console.log("Error al reproducir audio guía:", err);
+                });
+
+                // Cuando termine el audio actual de la guía, pasar al siguiente de forma fluida
+                activeGuideAudio.onended = () => {
+                    currentAudioIndex++;
+                    playNextGuideAudio();
+                };
+            } else {
+                // Al terminar todos los audios de guía (del 1 al 8)
+                instructionText.innerText = "Práctica finalizada. Gracias por meditar.";
+                statusLabel.innerText = "Finalizado";
+                
+                // Opcional: desvanecer o detener la música de fondo al terminar
+                // bgMusic.pause(); 
+            }
         }
     </script>
 </body>
